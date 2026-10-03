@@ -183,11 +183,19 @@ def configure_japanese_font() -> str | None:
     return None
 
 
-def configure_matplotlib(cfg: Config) -> None:
-    """Apply the plotting style globally (call once per process)."""
+def configure_matplotlib(cfg: Config, force_headless: bool = False) -> None:
+    """Apply the plotting style globally (call once per process).
+
+    The ``Agg`` backend is selected for CLI runs because they have no display and
+    must not try to open a window. Inside a notebook that choice is destructive:
+    the inline backend is what embeds figures into the cell output, and switching
+    to ``Agg`` silently drops every plot. An already-selected, non-default
+    backend is therefore respected unless ``force_headless`` is set.
+    """
     import matplotlib
 
-    matplotlib.use("Agg")  # headless: no display needed for CLI runs
+    if force_headless or matplotlib.get_backend().lower() == "agg":
+        matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     style = cfg.plots.get("style")

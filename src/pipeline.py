@@ -456,11 +456,9 @@ def ratio_model_experiment(
     ``log(unit_price / lag_unit_price)`` from the location attributes and
     reconstructs the price as ``lag * exp(prediction)``.
 
-    Note on which rows can train this: the lag attached to the *training* year
-    equals that year's own price (the panel join fills it from the later file's
-    前年価格 column), so the training ratio is ~1 by construction and carries no
-    growth signal. The year-on-year distribution is therefore described from the
-    prediction year, where the lag genuinely comes from the earlier year.
+    Both years use the *published* ``前年価格`` column (see
+    :func:`attach_measured_lag`), so the training ratios are genuine
+    year-on-year movements rather than an artefact of the join.
     """
     columns, _ = features.resolve_feature_columns(train, [val, test], cfg)
     # A baseline cannot predict a ratio: it would just echo the lag. Use a model
@@ -1212,16 +1210,25 @@ def improvements_markdown(results: dict[str, object], runs: dict[str, ModelRun])
             f"（n={_fmt(ratio['prediction_year_n'])}）"
         )
         lines.append(
-            "- 学習年（令和7年）に結合される前年単価は、その年自身の価格と一致する"
-            "（令和8年ファイルの前年価格列が令和7年の価格を再掲しているため）ので、"
-            "**学習データの前年比は約1.0になり、変化率の学習信号を持たない**。"
-            "これは今後の改善における本質的な制約である。"
+            f"- 学習年（令和7年）の前年比の中央値は **{_fmt(ratio['train_median_ratio'], 4)}**、"
+            f"予測年（令和8年）は **{_fmt(ratio['prediction_year_ratio_median'], 4)}** で、"
+            "**年による上昇率の水準がほぼ同じ**である。前年単価は各ファイルが公表する"
+            "前年価格から作っているため、学習時も評価時も「1年後の価格を当てる」"
+            "同じ構造になっている。"
+        )
+        direct_test = direct.metrics["test"]["mae"] if direct is not None else float("nan")
+        gain = direct_test - splits["test"]["mae"]
+        lines.append(
+            f"- **結論: 改善した。** test MAE は {_fmt(direct_test)} → "
+            f"{_fmt(splits['test']['mae'])} 円/㎡（{_fmt(gain)} 円/㎡ の改善）。"
+            "「水準」より「変化率」を予測する方が学習しやすいという実測結果である。"
         )
         lines.append(
-            "- **結論: 改善しなかった。** 変化率のばらつきが小さく"
-            f"（標準偏差 {_fmt(ratio['prediction_year_ratio_std'], 4)}）、"
-            "学習に使える年が2年分しかないため、変化率のパターンを学習する信号が足りない。"
-            "この負の結果もそのまま記録する。\n"
+            f"- ただし留保: 前年比のばらつきは小さく（標準偏差 "
+            f"{_fmt(ratio['prediction_year_ratio_std'], 4)}、上昇した地点 "
+            f"{_fmt(ratio['prediction_year_share_rising'] * 100, 1)}%）、"
+            "**モデルが予測しているのは主に「平均的な上昇率」**である。"
+            "2年分のデータでは個別地点の上昇率の差を学習する信号が乏しい。\n"
         )
 
     if "cross_series_check" in results:

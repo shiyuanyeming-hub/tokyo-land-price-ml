@@ -13,7 +13,11 @@
 #
 # 使い方:
 #   ./scripts/setup_libomp_macos.sh
-#   export DYLD_FALLBACK_LIBRARY_PATH="$PWD/.libs"
+#   export DYLD_LIBRARY_PATH="$PWD/.libs"
+#
+# もっと確実な方法: 既に libomp.dylib を持っているアプリを探して、そのディレクトリを
+# DYLD_LIBRARY_PATH に通す。実測で動作した例（R がインストールされている環境）:
+#   export DYLD_LIBRARY_PATH=/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib
 #   python -m src.pipeline
 #
 # 注意: 取得した dylib は Homebrew のボトルそのものです。
@@ -32,7 +36,7 @@ fi
 
 if [ -f "${DEST}/libomp.dylib" ]; then
   echo "既にあります: ${DEST}/libomp.dylib"
-  echo "  export DYLD_FALLBACK_LIBRARY_PATH=\"${DEST}\""
+  echo "  export DYLD_LIBRARY_PATH=\"${DEST}\""
   exit 0
 fi
 
@@ -56,4 +60,4 @@ rm -rf "${TMP}"
 
 echo "完了: ${DEST}/libomp.dylib"
 echo "実行前に次を通してください:"
-echo "  export DYLD_FALLBACK_LIBRARY_PATH=\"${DEST}\""
+echo "  export DYLD_LIBRARY_PATH=\"${DEST}\""

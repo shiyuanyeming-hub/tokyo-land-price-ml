@@ -18,6 +18,7 @@ import logging
 import sys
 from pathlib import Path
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -41,9 +42,8 @@ pd.set_option("display.max_columns", 60)
 print(f"repository : {REPO_ROOT.name}")
 print(f"config     : {cfg.path.name}")
 print(f"seed       : {cfg.seed}")
-from IPython.display import Image, display, display as display_image
-
 print(f"train year : {cfg.split['train_year']}  ->  predict year: {cfg.split['predict_year']}")
+print(f"backend    : {matplotlib.get_backend()}")
 """
 
 
@@ -231,12 +231,13 @@ display(expensive)
     markdown("## 4. 目的変数の分布"),
     code(
         """
-path = plots.plot_target_distribution(kouji_r8, cfg.figures_dir / "01_target_distribution.png")
-plt.close("all")
+path = plots.plot_target_distribution(
+    kouji_r8, cfg.figures_dir / "01_target_distribution.png", show=True
+)
+plt.show()
 print(f"saved: {path.relative_to(REPO_ROOT)}")
 """
     ),
-    code('display_image(filename=str(cfg.figures_dir / "01_target_distribution.png"))'),
     markdown(
         """
 **この図から読み取れること**: 生の平米単価は右に強く裾を引いた分布（歪度 17.2）で、
@@ -247,9 +248,10 @@ print(f"saved: {path.relative_to(REPO_ROOT)}")
     markdown("## 5. 地域による価格差"),
     code(
         """
-path = plots.plot_price_by_municipality(kouji_r8, cfg.figures_dir / "02_price_by_municipality.png")
-plt.close("all")
-display_image(filename=str(path))
+path = plots.plot_price_by_municipality(
+    kouji_r8, cfg.figures_dir / "02_price_by_municipality.png", show=True
+)
+plt.show()
 """
     ),
     code(
@@ -527,9 +529,9 @@ comparison.round(2)
 path = plots.plot_model_comparison(
     evaluate.metrics_frame({n: runs[n].metrics for n in MODEL_ORDER}),
     cfg.figures_dir / "06_model_comparison.png",
+    show=True,
 )
-plt.close("all")
-display_image(filename=str(path))
+plt.show()
 """
     ),
     markdown(
@@ -573,11 +575,15 @@ gap.round(1)
     markdown("## 5. 特徴量重要度"),
     code(
         """
-importance = runs["lightgbm"].importance
+importance = runs["gradient_boosting"].importance
 display(importance.round(4))
-path = plots.plot_feature_importance(importance, cfg.figures_dir / "05_feature_importance.png")
-plt.close("all")
-display_image(filename=str(path))
+path = plots.plot_feature_importance(
+    importance,
+    cfg.figures_dir / "05_feature_importance.png",
+    model_name="gradient_boosting",
+    show=True,
+)
+plt.show()
 """
     ),
     markdown(
@@ -596,12 +602,12 @@ best_name = min((n for n in MODEL_ORDER if n != "lag"),
 print("val MAE 最小のモデル:", best_name)
 
 merged = pipeline.merge_test_predictions(runs[best_name], test)
-path = plots.plot_pred_vs_actual(merged, cfg.figures_dir / "03_pred_vs_actual.png", title=f"test, {best_name}")
-plt.close("all")
-display_image(filename=str(path))
-path = plots.plot_residuals(merged, cfg.figures_dir / "04_residuals.png")
-plt.close("all")
-display_image(filename=str(path))
+path = plots.plot_pred_vs_actual(
+    merged, cfg.figures_dir / "03_pred_vs_actual.png", title=f"test, {best_name}", show=True
+)
+plt.show()
+path = plots.plot_residuals(merged, cfg.figures_dir / "04_residuals.png", show=True)
+plt.show()
 """
     ),
     markdown(

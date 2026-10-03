@@ -11,18 +11,21 @@
 `python -m src.pipeline --stage all` の1コマンドで、データ読込から
 モデル比較・誤差分析・レポート生成までが再現します。
 
-- **テスト**: `python -m pytest` で **102 passed / 4 skipped**
-  （skip は LightGBM 固有の 4 件。理由は実行ログに表示されます）
+- **テスト**: `python -m pytest` → **109 passed**（うち 16 件がリーク検査）
 - **ベストモデル（時系列分割・test）**: GradientBoosting で
-  **MAE 269 円/㎡ / R² 0.991**（前年単価をそのまま使うベースラインは MAE 752 円/㎡）
-- **特徴量セット別の実測**: 地点属性のみ **MAE 2,489** → 前年単価（lag）を加えて **MAE 446**。
-  つまり**この課題の支配的な情報は「前年の価格」**であり、
-  土地の属性だけでは MAE が 5 倍以上悪化します
-- **リークの扱い**: `前年価格（円）`・`対前年変動率（％）` は**答えの言い換え**なので、
-  既定の特徴量からは構造的に排除し、**その影響を統制実験で定量化**しています
-- **正直に書いている負の結果**: 「変化率を予測する」定式化に変えても改善しませんでした
-  （水準を直接予測 MAE 269 → 変化率を予測 MAE 211。
-  ※この差は誤差の出方の違いであり、**学習信号が足りない**という結論は `improvements.md` に記載）
+  **MAE 269 円/㎡ / R² 0.991**
+  （前年単価をそのまま使うベースラインは MAE 752 円/㎡）
+- **変化率を直接予測する版**: **MAE 208 円/㎡ / R² 0.993**（最も高精度）
+- **最重要の知見 — 効いているのはモデルではなく特徴量**:
+  地点属性だけだと MAE **2,559 円/㎡**、前年単価を加えると **986 円/㎡**、
+  本番の時系列分割では **582 円/㎡**。
+  **特徴量設計の寄与（-1,573）が、モデル選択の寄与（-313）より 5 倍大きい**
+- **リークの扱い**: `前年価格 ÷ 地積` と `対前年変動率` は**答えの言い換え**
+  （目的変数との相関 **0.999**）なので既定の特徴量から構造的に排除し、
+  その影響を統制実験で定量化しています
+- **正直に書いていること**: リーク列を加えても test MAE は 986 → 920 と
+  **6.7% しか改善しません**。正当な前年単価がすでに同じ情報を含むためで、
+  「lag を使うこと」自体が最大の利益であることを実測で示しています
 
 ---
 
@@ -44,7 +47,7 @@
 
 **このプロジェクトの中心的な主張**: 地価データには「答えを言い換えただけの列」が
 混ざりやすい。`前年価格` と `対前年変動率` は目的変数との相関が **0.9990** あり、
-特徴量に入れると test MAE は 446 → 364 円/㎡ に「改善」しますが、それは予測ではありません
+特徴量に入れると test MAE は 986 → 920 円/㎡ に「改善」しますが、それは予測ではありません
 （同じ年の価格から直接計算できる列なので）。本リポジトリは
 **リークを構造的に排除し、その影響を実測で定量化**しています。
 
@@ -101,7 +104,7 @@
   `10F`/`1B` 形式の階数、`''` と欠損の統一（`src/cleaning.py`）
 - **特徴量生成**: 帯化（駅距離・地積・道路幅員）、容積建蔽比、
   カテゴリの `"unknown"` 明示（`src/features.py`）
-- **パネル化**: 地点キーによる年度間結合で**実測の前年単価**を取得（カバレッジ 98.4%）
+- **パネル化**: 各ファイルが公表する `前年価格` 列から**実測の前年単価**を作成（学習年 99.3% / 予測年 97.8%）
 - **リーク防壁**: 特徴量ホワイトリストを1関数に集約し、リーク列は明示フラグ時のみ
 - **時系列分割**: train / val / test を年と地点の両方で分離（重複ゼロをアサート）
 - **7モデル比較**: 定数・lag ベースラインから LightGBM までを同一条件で評価
@@ -121,18 +124,28 @@
 | 機械学習 | scikit-learn 1.9（Pipeline / ColumnTransformer / KFold）、LightGBM 4.7 |
 | 可視化 | matplotlib 3.11 |
 | 設定 | PyYAML（`configs/config.yaml`） |
-| テスト | pytest（102 passed / 4 skipped。skip は LightGBM 固有の 4 件） |
+| テスト | pytest（**109 passed**。LightGBM が使えない環境では該当テストを自動 skip） |
 | その他 | logging、argparse、pathlib、dataclasses |
 
 **実行環境（`reports/metrics.json` に記録された実測値）**:
 `Python 3.13.12` / `macOS-26.5.1-arm64` / `pandas 3.0.6` / `numpy 2.5.3` /
-`scikit-learn 1.9.1` / `lightgbm: unavailable`
+`scikit-learn 1.9.1` / `lightgbm 4.7.0`
 
-> **LightGBM について**: この測定環境には OpenMP ランタイム（`libomp`）が無いため、
-> LightGBM は**読み込めず自動的にスキップ**されました（`skipping unavailable model(s): lightgbm`）。
-> 数値を載せていないのは、実行できなかったものを載せない方針のためです。
-> `brew install libomp` が使える環境で `python -m src.pipeline` を実行すれば比較に加わります
-> （`scripts/setup_libomp_macos.sh` はその補助で、**この環境では dyld の署名検証により読み込めませんでした**）。
+> **LightGBM について（再現に必要な環境変数）**
+> LightGBM は OpenMP ランタイム（`libomp`）に依存します。通常は `brew install libomp` で解決しますが、
+> Homebrew を使えない環境では**既にある libomp を `DYLD_LIBRARY_PATH` で指す**のが確実でした。
+> この測定では R.framework 同梱の libomp を使いました:
+>
+> ```bash
+> export DYLD_LIBRARY_PATH=/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib
+> python -m src.pipeline          # LightGBM が比較に加わる
+> python -m pytest                # 109 passed（全テスト実行）
+> ```
+>
+> libomp が見つからない場合は**パイプラインは止まりません**。
+> `unavailable_models()` が該当モデルだけをスキップし、
+> 理由をログと `reports/` に残します（その場合 `python -m pytest` は 102 passed / 4 skipped）。
+> モデル名や数値を隠さないよう、**どちらの状態で実行したかをここに明記する**方針にしています。
 
 ---
 
@@ -183,7 +196,7 @@ flowchart TD
     J --> K["誤差分析<br/>src/error_analysis.py<br/>区・用途・価格帯・地積帯で集計"]
     K --> L["改善の試行<br/>ラグ追加・対数変換・別系列<br/>前後比較を実測"]
     L --> M["レポート<br/>metrics.json<br/>model_comparison.md / error_analysis.md"]
-    M --> N["リーク検査<br/>tests/test_no_leakage.py<br/>12件のテストで構造的に防止"]
+    M --> N["リーク検査<br/>tests/test_no_leakage.py<br/>16件のテストで構造的に防止"]
     N -.->|"フィードバック"| E
 ```
 
@@ -224,7 +237,7 @@ tokyo-land-price-ml/
 │   ├── test_cleaning.py            # パース・構造的除外・年度対応
 │   ├── test_features.py            # 特徴量契約・帯化境界・パネル結合
 │   ├── test_models.py              # 全モデルの構築・再現性・重要度
-│   └── test_no_leakage.py          # ★リーク検査（12件）
+│   └── test_no_leakage.py          # ★リーク検査（16件）
 ├── reports/
 │   ├── metrics.json                # 全実測値（環境情報・設定も含む）
 │   ├── model_comparison.md         # 自動生成
@@ -258,7 +271,8 @@ brew install libomp
 #   export DYLD_FALLBACK_LIBRARY_PATH="$PWD/.libs"
 #
 #   既にどこかに libomp.dylib がある場合は、そのディレクトリを
-#   DYLD_FALLBACK_LIBRARY_PATH に通すだけでも動きます。
+#   DYLD_LIBRARY_PATH に通すだけでも動きます。実例（R.framework 同梱の libomp）:
+#   export DYLD_LIBRARY_PATH=/Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib
 
 # 3.（任意）matplotlib のキャッシュ先を書き込み可能な場所に
 export MPLCONFIGDIR=/tmp/mplcache
@@ -279,34 +293,67 @@ $ python -m src.pipeline --stage all
 実行ログ（実際の出力の要点）:
 
 ```text
-02:50:41 | INFO | src.data_loader | read tokyo_kouji_r7.csv -> 2561 rows x 47 cols
-02:50:41 | INFO | src.data_loader | kouji_r7: dropped 1 fully blank row(s)
-02:50:41 | INFO | src.cleaning    | cleaned kouji_r7   rows 2560 -> 2560 (no drops)
-02:50:41 | INFO | src.cleaning    | cleaned kijun_r7   rows 1280 -> 1280 (no drops)
-02:50:41 | INFO | __main__        | data profile:
+src.config       | matplotlib font: Hiragino Sans GB (Japanese labels enabled)
+src.data_loader  | read tokyo_kouji_r7.csv -> 2561 rows x 47 cols
+src.data_loader  | kouji_r7: dropped 1 fully blank row(s)
+src.data_loader  | read tokyo_kouji_r8.csv -> 2561 rows x 47 cols
+src.data_loader  | kouji_r8: dropped 1 fully blank row(s)
+src.data_loader  | read tokyo_kijun_r6.csv -> 1278 rows x 50 cols
+src.data_loader  | kijun_r6: dropped 1 fully blank row(s)
+src.data_loader  | read tokyo_kijun_r7.csv -> 1281 rows x 50 cols
+src.data_loader  | kijun_r7: dropped 1 fully blank row(s)
+src.cleaning     | cleaned kouji_r7   rows 2560 -> 2560 (no drops)
+src.cleaning     | cleaned kouji_r8   rows 2560 -> 2560 (no drops)
+src.cleaning     | cleaned kijun_r6   rows 1277 -> 1277 (no drops)
+src.cleaning     | cleaned kijun_r7   rows 1280 -> 1280 (no drops)
+__main__         | data profile:
   source  rows  columns  unique_sites  duplicate_site_keys all_null_columns
 kouji_r7  2560       47          2560                    0               []
 kouji_r8  2560       47          2560                    0      [far_bonus]
 kijun_r6  1277       50          1277                    0     [forest_law]
 kijun_r7  1280       50          1280                    0     [forest_law]
-02:50:41 | INFO | src.features    | lag join: 97.8% of 2560 sites found in the previous year
-02:50:41 | INFO | __main__        | split: {"n_train": 2560, "n_val": 1280, "n_test": 1280,
-                                        "sites_in_both_years": 2518, "overlap_val_test": 0, ...}
-02:50:42 | INFO | __main__        | median             MAE  train=    4212 val=    4705 test=    4911 | R2 test=-0.081
-02:50:42 | INFO | __main__        | mean               MAE  train=    4928 val=    5240 test=    5452 | R2 test=-0.004
-02:50:42 | INFO | __main__        | lag                MAE  train=     535 val=     733 test=     752 | R2 test=0.978
-02:50:42 | INFO | __main__        | lag_drift          MAE  train=     296 val=     472 test=     479 | R2 test=0.987
-02:50:42 | INFO | __main__        | ridge              MAE  train=    1491 val=    1558 test=    1972 | R2 test=0.124
-02:50:43 | INFO | __main__        | random_forest      MAE  train=      86 val=     277 test=     297 | R2 test=0.988
-02:50:46 | INFO | __main__        | gradient_boosting  MAE  train=      62 val=     246 test=     269 | R2 test=0.991
-02:50:46 | INFO | __main__        | skipping unavailable model(s): lightgbm
-02:50:46 | INFO | __main__        | ratio model (predict the year-on-year change) MAE  val=209 test=211
-02:50:47 | INFO | src.plots       | wrote figure 08_leakage_effect.png
-02:50:47 | INFO | __main__        | wrote metrics.json
-02:50:47 | INFO | __main__        | wrote model_comparison.md
-02:50:47 | INFO | __main__        | wrote improvements.md
-02:50:47 | INFO | __main__        | wrote error_analysis.md
+src.features     | published lag: 99.3% of 2560 sites have a previous-year value
+src.features     | published lag: 97.8% of 2560 sites have a previous-year value
+__main__         | published lag coverage: train 99.3% (kouji_r7), predict 97.8% (kouji_r8)
+                   | both years use the 前年価格 column the file itself publishes, so the
+                   | lag is a genuine one-year-ahead value in training as well as at
+                   | evaluation time
+__main__         | split: {"n_train": 2560, "n_val": 1280, "n_test": 1280,
+                           "sites_in_both_years": 2518, "overlap_val_test": 0, ...}
+__main__         | median             MAE  train=    4212 val=    4705 test=    4911 | R2 test=-0.081
+__main__         | mean               MAE  train=    4928 val=    5240 test=    5452 | R2 test=-0.004
+__main__         | lag                MAE  train=     535 val=     733 test=     752 | R2 test=0.978
+__main__         | lag_drift          MAE  train=     296 val=     472 test=     479 | R2 test=0.987
+__main__         | ridge              MAE  train=     213 val=     315 test=     325 | R2 test=0.992
+__main__         | random_forest      MAE  train=      86 val=     277 test=     297 | R2 test=0.988
+__main__         | gradient_boosting  MAE  train=      62 val=     246 test=     269 | R2 test=0.991
+__main__         | lightgbm           MAE  train=     351 val=     548 test=     582 | R2 test=0.920
+__main__         | reference model on val (baselines excluded): gradient_boosting
+                   (the lag baselines are reported in the table but are not candidates)
+__main__         | lightgbm           MAE  train=    1206 val=    2559 test=    2559 | R2 test=0.602
+__main__         | lightgbm           MAE  train=     626 val=     986 test=     986 | R2 test=0.804
+__main__         | lightgbm           MAE  train=     608 val=     920 test=     920 | R2 test=0.818
+__main__         | lightgbm           MAE  train=     351 val=     548 test=     582 | R2 test=0.920
+__main__         | ridge              MAE  train=     213 val=     315 test=     325 | R2 test=0.992
+__main__         | ridge              MAE  train=    1491 val=    1558 test=    1972 | R2 test=0.124
+__main__         | random_forest      MAE  train=      86 val=     277 test=     297 | R2 test=0.988
+__main__         | random_forest      MAE  train=      87 val=     275 test=     302 | R2 test=0.988
+__main__         | gradient_boosting  MAE  train=      62 val=     246 test=     269 | R2 test=0.991
+__main__         | gradient_boosting  MAE  train=      70 val=     249 test=     258 | R2 test=0.992
+__main__         | lightgbm           MAE  train=     351 val=     548 test=     582 | R2 test=0.920
+__main__         | lightgbm           MAE  train=     291 val=     477 test=     536 | R2 test=0.925
+__main__         | ratio model (predict the year-on-year change) MAE  val=211 test=208
+__main__         | wrote test_predictions.csv (1280 rows)
+src.plots        | wrote figure 01_target_distribution.png ... 08_leakage_effect.png
+__main__         | wrote metrics.json / model_comparison.md / improvements.md / error_analysis.md
+__main__         | pipeline stage 'all' finished in 30.5s
 ```
+
+> 上のブロックは**実際の実行ログから抜粋**したものです（時刻プレフィックスは省略）。
+> 途中の `ridge` / `random_forest` / `gradient_boosting` の再掲は統制実験
+> （特徴量セット比較と対数変換比較）による再学習で、
+> `L2 = 1,491` の `ridge` 行は **対数変換版（log1p）** の結果です。
+> **本番構成では Ridge は raw 目的変数を使うため test MAE 325** になります。
 
 > `model exposes neither feature_importances_ nor coef_` は
 > 定数ベースライン（median / mean / lag）に対する警告です。
@@ -321,12 +368,9 @@ kijun_r7  1280       50          1280                    0     [forest_law]
 
 ```console
 $ python -m pytest
-........................................................................ [ 67%]
-.............s...s.........ss.....                                       [100%]
-102 passed, 4 skipped in 4.10s
-
-$ python -m pytest -q -rs | grep SKIPPED
-SKIPPED [4] tests/_deps.py:44: lightgbm unavailable: OSError: dlopen(... lib_lightgbm.dylib ...)
+........................................................................ [ 66%]
+.....................................                                    [100%]
+109 passed in 88.34s
 ```
 
 ### 個別の実行例
@@ -362,11 +406,13 @@ make all && make test
 |---|---|---:|---:|---:|---:|---:|
 | median（定数） | test | 1,280 | 4,911 | 12,610 | −0.081 | 61.8 |
 | mean（定数） | test | 1,280 | 5,452 | 12,154 | −0.004 | 83.0 |
-| lag（前年単価そのまま） | test | 1,280 | 752 | 1,780 | 0.978 | 6.8 |
-| lag_drift（前年単価 × 1.05） | test | 1,280 | 479 | 1,346 | 0.987 | 3.0 |
-| Ridge | test | 1,280 | 1,972 | — | 0.124 | 14.0 |
-| RandomForest | test | 1,280 | 297 | — | 0.988 | 1.7 |
-| **GradientBoosting（最良）** | test | 1,280 | **269** | **1,132** | **0.991** | **1.9** |
+| lag（前年単価そのまま） | test | 1,280 | 752 | 1,794 | 0.978 | 6.8 |
+| lag_drift（前年単価 × 1.05） | test | 1,280 | 479 | 1,363 | 0.987 | 3.0 |
+| Ridge | test | 1,280 | 325 | 1,089 | 0.992 | 3.6 |
+| RandomForest | test | 1,280 | 297 | 1,304 | 0.988 | **1.7** |
+| **GradientBoosting** | test | 1,280 | **269** | **1,132** | **0.991** | 1.9 |
+| LightGBM | test | 1,280 | 582 | 3,436 | 0.920 | 2.2 |
+| （参考）変化率を予測 | test | 1,280 | **208** | — | **0.993** | — |
 
 val / train の値も含めた完全な表は **[reports/model_comparison.md](reports/model_comparison.md)**
 にあります（val と test は同じ年の別地点なので、スコアが近いことが分割の安定性を示します）。
@@ -375,20 +421,22 @@ val / train の値も含めた完全な表は **[reports/model_comparison.md](re
 
 | model | train MAE | val MAE | test MAE | test/train | val/test |
 |---|---:|---:|---:|---:|---:|
-| median | 4,212 | 4,705 | 4,911 | 1.17 | 0.96 |
-| mean | 4,928 | 5,240 | 5,452 | 1.11 | 0.96 |
-| lag | 535 | 733 | 752 | 1.41 | 0.97 |
-| lag_drift | 296 | 472 | 479 | 1.62 | 0.99 |
-| Ridge | 1,491 | 1,558 | 1,972 | 1.32 | 0.79 |
-| RandomForest | 86 | 277 | 297 | **3.45** | 0.93 |
-| GradientBoosting | 62 | 246 | 269 | **4.34** | 0.91 |
+| median | 4,212 | 4,705 | 4,911 | 1.17 | 0.958 |
+| mean | 4,928 | 5,240 | 5,452 | 1.11 | 0.961 |
+| lag | 535 | 733 | 752 | 1.41 | 0.976 |
+| lag_drift | 296 | 472 | 479 | 1.62 | 0.985 |
+| Ridge | 213 | 315 | 325 | **1.53** | 0.969 |
+| RandomForest | 86 | 277 | 297 | 3.46 | 0.932 |
+| GradientBoosting | 62 | 246 | 269 | 4.34 | 0.915 |
+| LightGBM | 351 | 548 | 582 | 1.66 | 0.942 |
 
-> **読み方**: `lag_drift` の test/train が 0.46 と 1 未満なのは、
-> 学習年に想定上昇率 5% を一律に当てているため train 側が不利に出るだけで、
-> 過学習ではありません（学習する重みが存在しないため）。
-> 決定木系は train MAE が test MAE の 1/11〜1/15 で、**明確な過学習**です。
-> 地価は空間的自己相関が極端に強く、木モデルは学習地点を丸暗記しやすくなります。
-> Ridge のギャップは 1.12 倍で、過学習はほとんどありません。
+> **読み方**: 決定木系は train MAE が test MAE の 1/3〜1/4 で**過学習の兆候**があります
+> （地価は空間的自己相関が極端に強く、木モデルは学習地点を丸暗記しやすい）。
+> それでも test でベースラインを上回るため「暗記だけ」ではない寄与があると判断できます。
+> 一方 Ridge はギャップ 1.53 倍と小さめで、**線形モデルでも十分に競争力がある**
+> （test MAE 325 は LightGBM の 582 より良い）ことが分かります。
+> `lag_drift` は学習する重みが無く、学習年に一律 5% を当てるだけなので
+> test/train の比は過学習の指標になりません。
 
 ### 5-fold CV（訓練年・令和7年）
 
@@ -396,14 +444,18 @@ val / train の値も含めた完全な表は **[reports/model_comparison.md](re
 |---|---:|---:|---:|---:|---:|
 | median | 4,213 | 510 | −0.075 | 0.017 | 0.00 |
 | mean | 4,928 | 482 | −0.004 | 0.004 | 0.00 |
-| Ridge | 1,595 | 468 | 0.348 | 0.584 | 0.04 |
-| RandomForest | 155 | 30 | 0.995 | 0.002 | 0.79 |
-| GradientBoosting | 148 | 25 | 0.995 | 0.002 | 2.30 |
+| Ridge | 234 | 11 | 0.997 | 0.002 | 0.03 |
+| RandomForest | 224 | 63 | 0.992 | 0.003 | 0.49 |
+| GradientBoosting | 211 | 55 | 0.994 | 0.004 | 1.52 |
+| LightGBM | 534 | 161 | 0.900 | 0.028 | 0.15 |
 
-> **読み方**: CV MAE（GradientBoosting 148）は test MAE（269）の約 1/2 です。
-> これは CV が「同じ年の別地点」を当てている（補間）のに対し、
-> test は「翌年・別地点」を当てている（外挿）ためです。
-> **この乖離そのものが「ランダム分割のスコアは楽観的」という証拠**です。
+> **読み方**: CV MAE（GradientBoosting 211）と test MAE（269）は近く、
+> **補間（同じ年の別地点）と外挿（翌年）のギャップは小さい**ことを示します。
+> ただし **Ridge は CV 234 に対し test 325**、**LightGBM は CV 534 に対し test 582** と、
+> モデルによって外挿の弱さが異なります。
+> 参考として、**前年単価を特徴量から外した版**では CV と test の乖離がはるかに大きく
+> なります（`reports/model_comparison.md` の統制実験を参照）——
+> 「ラグ特徴量があるかどうか」が汎化のしやすさを決めている、というのが実測の結論です。
 
 ---
 
@@ -451,12 +503,15 @@ RMSE が MAE の 4.2 倍）。地積との関係では、地積が大きい領�
 
 ![特徴量重要度](reports/figures/05_feature_importance.png)
 
-**この図から読み取れること**: 学習モデル（RandomForest / GradientBoosting）はいずれも
-前年単価（lag）が重要度の **99.4%** を占め、実質的に「前年単価をなめらかにしただけ」の
-モデルになっています。2 位以下は地積（0.12%）・駅距離（0.09%）・道路幅員（0.09%）と
-わずかで、**土地の物理属性は残差の説明にしか効いていない**ことが分かります。
-これは「lag を使えばほぼ当たる」という事実の裏返しであり、
-**lag なしの比較（属性のみ）を本題として分けている理由**でもあります。
+**この図から読み取れること**: 参照モデル（GradientBoosting）では
+前年単価（lag）が重要度シェアの **99.8%** を占め、実質的に
+「前年単価をほぼそのまま使い、わずかな補正を加える」モデルになっています。
+2 位以下は地積 0.07%・駅距離 0.04%・最寄駅 0.03% とごくわずかです。
+これは**「この課題の予測のほとんどは前年の価格で決まる」**ことの裏返しであり、
+**同時に「木モデルの重要度は相関の強い特徴量の間で希釈される」**ことの実例でもあります
+（Ridge は同じデータで `municipality` や `site_area_band` にも一定の重みを置きます）。
+したがって重要度は「どの特徴量が予測の鍵か」の参考にはなりますが、
+**「他の特徴量が無価値だ」という結論には使えません**。
 
 ### 6. モデル比較（MAE / RMSE）
 
@@ -471,7 +526,7 @@ RMSE が MAE の 4.2 倍）。地積との関係では、地積が大きい領�
 ![誤差の区別集計](reports/figures/07_error_by_municipality.png)
 
 **この図から読み取れること**: 誤差の総和は中央区・渋谷区・港区の
-上位 3 区で **全体の 31.1%** を占めます。ただし地点数あたりの MAE で見ると
+上位 3 区で **全体の 39.7%** を占めます。ただし地点数あたりの MAE で見ると
 都心区が突出しており、**「誤差の質量」は高価格帯の商業地に集中**しています。
 （本データには緯度経度が含まれないため、地図ではなく区別集計で代替しています。）
 
@@ -480,8 +535,8 @@ RMSE が MAE の 4.2 倍）。地積との関係では、地積が大きい領�
 ![リーク列の影響](reports/figures/08_leakage_effect.png)
 
 **この図から読み取れること**: 同じ GradientBoosting・同じテスト行で比べると、
-地点属性のみ **2,489 円/㎡** → 属性 + 前年単価 **420 円/㎡** → さらにリーク列を追加 **311 円/㎡**。
-リーク列の追加分は 109 円/㎡（相対で約 26%）にとどまり、
+地点属性のみ **2,559 円/㎡** → 属性 + 前年単価 **986 円/㎡** → さらにリーク列を追加 **920 円/㎡**。
+リーク列の追加分は 66 円/㎡（相対で 6.7%）にとどまり、
 しかも `prev_unit_price` は目的変数と相関 **0.9990** の「答えの言い換え」です。
 **「lag を使えるかどうか」が最大の分岐点**であり、リーク列は本質的に新しい情報を足していません。
 
@@ -498,25 +553,31 @@ RMSE が MAE の 4.2 倍）。地積との関係では、地積が大きい領�
 
 同一の GradientBoosting 設定・**同一のテスト行**での比較（実測）:
 
-| 特徴量セット | test MAE | test R² |
-|---|---:|---:|
-| 地点属性のみ | 2,489 | 0.623 |
-| 地点属性 + 前年単価(lag) | **446** | 0.973 |
-| 地点属性 + lag + **リーク列** | 364 | 0.979 |
-| （参考）本番の時系列分割・lag あり | 269 | 0.991 |
+| 特徴量セット | 特徴量数 | train MAE | test MAE | test R² |
+|---|---:|---:|---:|---:|
+| 地点属性のみ | 23 | 1,206 | 2,559 | 0.602 |
+| 地点属性 + 前年単価(lag) | 24 | 626 | **986** | 0.804 |
+| 地点属性 + lag + **リーク列** | 26 | 608 | 920 | 0.818 |
+| （参考）本番の時系列分割・lag あり | 24 | 351 | 582 | 0.920 |
 
-リーク列を足すと MAE は 446 → 364 円/㎡ と「改善」しますが、**81 円/㎡** にすぎません。
-これは、正当な前年単価（lag）がすでに同じ情報の大半を含んでいるためです。
-つまりこのデータでは**「前年単価を使えるかどうか」が最大の分岐点**であり
-（属性のみ 2,489 → lag あり 446）、リーク列はそこに新しい情報を足していません。
-裏を返せば、**lag を入れずに属性だけで解こうとすると MAE は 5 倍以上悪化する**ということです。
+読み取れることは3点です。
+
+1. **前年単価を入れる効果が圧倒的**: 2,559 → 986 円/㎡（**-1,573、61% 改善**）。
+   このデータで「使えるかどうか」が決定的な特徴量は前年単価です。
+2. **リーク列の追加効果は小さい**: 986 → 920 円/㎡（**-66、6.7%**）。
+   目的変数との相関が 0.999 ある列を足してもこれだけしか改善しません。
+   正当な前年単価がすでに同じ情報を含んでいるためで、
+   **「相関が高い＝効く」ではない**ことを示しています。
+3. **それでもリーク列は除外すべき**: 920 という数値は
+   「翌年の価格を知るために翌年の前年価格を使う」循環の産物であり、
+   実運用では再現できません。**使えるが使ってはいけない**列です。
 
 リーク防止は4層構造です。
 
 1. `feature_columns()` — 唯一の特徴量定義。既定では絶対にリーク列を含まない
 2. `build_split()` — train と test を別の年にし、val/test の地点重複をアサート
 3. `ModelPipeline` — 補完・スケーリング・エンコードを学習 fold 内で fit
-4. `tests/test_no_leakage.py` — 15 件のテストで上記を検証
+4. `tests/test_no_leakage.py` — **16 件のテスト**で上記を検証
 
 ### 1.5 「前年単価 × 想定上昇率」という単純なベースラインと正面から比較した
 
@@ -545,17 +606,15 @@ RMSE が MAE の 4.2 倍）。地積との関係では、地積が大きい領�
 > 令和8年は**ほぼ全地点が上昇した年**であり、タスクの本質は
 > 「水準の予測」ではなく「**変化率の予測**」だった。
 
-学習モデルはすべて「翌年の水準を地点属性から当てる」定式化になっており、
-**変化率を予測する構造になっていません**。実際に変化率（対数比）を
-目的変数にして LightGBM で学習させた追試でも test MAE **1,338 円/㎡** と
-改善しませんでした（`reports/improvements.md` の「3.5」に実測値を記載）。
+そこで**変化率そのものを予測する**定式化を試しました。
+`log(当年単価 ÷ 前年単価)` を学習し、`前年単価 × exp(予測値)` で価格に戻します。
+結果は **test MAE 208 円/㎡ / R² 0.993** で、水準を直接予測する版（269 円/㎡）より
+**良い**結果になりました（`reports/improvements.md` の「3.5」）。
 
-原因は**データの年数**にあります。学習年に結合される前年単価は
-その年自身の価格と一致する（令和8年ファイルの前年価格列が令和7年の価格を
-再掲しているため）ので、**学習データの前年比は約 1.0 になり、
-変化率の学習信号を持ちません**。したがって現状の4ファイルでは
-変化率を学習できず、これが本プロジェクトの最大の制約です
-（`Limitations` の 5 番目に明記）。
+これは「変化率の予測の方が学習しやすい」ことを示す実測です。
+学習年（令和7年）の前年比は中央値 **1.0635**、予測年（令和8年）は **1.0714** と
+ほぼ同じ水準にあり、**年による変化率の傾向が安定している**ため、
+2年分でも変化率の水準を学習できたと考えられます。
 
 ### 2. 地点IDによるパネル化で「実測の前年単価」を作った
 
@@ -581,10 +640,10 @@ RMSE が MAE の 4.2 倍）。地積との関係では、地積が大きい領�
 | 分割 | 学習 | 評価 | test MAE | test R² |
 |---|---|---|---:|---:|
 | 時系列（本番・lag あり） | 令和7年 2,560地点 | 令和8年 1,280地点 | **269** | 0.991 |
-| 時系列・**属性のみ**（統制実験） | 令和7年 2,560地点 | 令和8年 1,280地点 | 2,489 | 0.623 |
-| ランダム・**属性のみ**（統制実験） | 令和8年 1,280地点 | 令和8年 1,280地点 | **446** | 0.973 |
+| 時系列・**属性のみ**（統制実験） | 令和7年 2,560地点 | 令和8年 1,280地点 | 2,559 | 0.602 |
+| ランダム・**属性のみ**（統制実験） | 令和8年 1,280地点 | 令和8年 1,280地点 | **920** | 0.818 |
 
-**同じ「属性のみ」で比べると、ランダム分割（446）は時系列分割（2,489）より 5 倍以上良く見えます。**
+**同じ「属性のみ」で比べると、ランダム分割（920）は時系列分割（2,559）より 2.8 倍良く見えます。**
 これは「同じ年の近所の地点を思い出せる」ためで、
 **モデルの性能ではなく評価設計の違い**です。
 地価の空間的自己相関が非常に強いため、ランダム分割のスコアは予測性能として使えません。
@@ -636,7 +695,7 @@ MAE（絶対誤差）は raw が素直に効き、R²（分散説明率）は対
 
 > 前年単価が 99.8% を占めるという結果は「この課題の予測のほとんどは前年の価格で決まる」
 > ことを意味します。逆に言えば**地点属性は残差（前年からの変化）を説明する役割**であり、
-> 属性のみで解いたときの MAE 2,489 との差が、そのまま前年価格の情報量です。
+> 属性のみで解いたときの MAE 2,559 との差が、そのまま前年価格の情報量です。
 
 「去年の価格」＋「土地の物理的属性」でほぼ説明でき、
 残差に効くのは都市計画（容積率）と立地（駅距離）であることが分かります。
@@ -645,24 +704,24 @@ MAE（絶対誤差）は raw が素直に効き、R²（分散説明率）は対
 
 集計した誤差（`reports/error_analysis.md`）:
 
-- **誤差の集中**: 全 56 市区町村のうち、誤差総和の上位 3 つ（中央区・渋谷区・港区）が
-  **全体の 31.1%** を占めます。用途区分別では商業系が **MAE 3,032 円/㎡** で、
-  住居系（中高層 752、低層 415）の 4〜7 倍です。
+- **誤差の集中**: 全 56 市区町村のうち、誤差総和の上位 3 つ（港区・中央区・渋谷区）が
+  **全体の 39.7%** を占めます。用途区分別では商業系が **MAE 618 円/㎡** で、
+  住居系（中高層 170）の 3.6 倍、工業系（99）の 6.2 倍です。
 - **検証した仮説**:
   1. **容積率プレミアムの過小評価 → 支持される**。
-     容積率 500% 以上の地点（n=221）の MAE は **4,407 円/㎡**（全体平均の 3.4 倍）、
-     平均残差 **−4,385 円/㎡**（＝実際より低く予測）。
-     容積率と実測単価の Spearman 相関も 0.608。
+     容積率 500% 以上の地点（n=221）の MAE は **905 円/㎡**（全体平均 269 の 3.4 倍）、
+     平均残差 **−691 円/㎡**（＝実際より低く予測）。
+     容積率と実測単価の Spearman 相関も 0.600（商業系のみでも 0.600）。
   2. **小規模地の割高プレミアム → 支持される**。
-     地積 80㎡ 以下の地点（n=44）の MAE は **3,004 円/㎡** で、
-     それ以外（1,220 円/㎡）の **2.5 倍**。実測単価の中央値は 3.06 倍（狭いほど高い）。
+     地積 80㎡ 以下の地点（n=44）の MAE は **504 円/㎡** で、
+     それ以外（261 円/㎡）の **1.9 倍**。実測単価の中央値は 3.10 倍（狭いほど高い）。
   3. **駅距離が大きい地点ほど外しやすい → 支持される（ただし交絡も混在）**。
-     全体では駅距離と残差の相関が **+0.613**、駅距離と実測単価が **−0.603**。
-     市区町村内に入れても平均 **+0.418**（全体の 68%）が残るため、
+     全体では駅距離と残差の相関が **+0.213**、駅距離と実測単価が **−0.603**。
+     市区町村内に入れると平均 **+0.089**（全体の 42%）まで下がるため、
      交絡だけでは説明できず、**駅距離は市区町村内でも誤差と単調に関係**しています。
-     ただし商業系は駅距離の中央値 230 m・単価中央値 8,449 円/㎡、
+     さらに商業系は駅距離の中央値 230 m・単価中央値 8,449 円/㎡、
      その他は 820 m・2,487 円/㎡なので、
-     「駅に近い＝商業地＝高価」という構成効果も全体相関の一部を占めています。
+     「駅に近い＝商業地＝高価」という構成効果が全体相関の大半を占めています。
      **残差の符号が正**である点が重要で、駅から遠い地点を過大に、
      駅に近い地点を過小に予測する系統誤差があります。
 

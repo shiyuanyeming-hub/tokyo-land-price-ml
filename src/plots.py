@@ -36,16 +36,24 @@ JA = {
 }
 
 
-def _save(fig: plt.Figure, path: Path) -> Path:
+def _save(fig: plt.Figure, path: Path, show: bool = False) -> Path:
+    """Write a figure to disk and, optionally, leave it open for a notebook.
+
+    The CLI always closes the figure (there is no display and thousands of open
+    figures would leak memory). A notebook passes ``show=True`` so the inline
+    backend still has a live figure to embed when the cell ends.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
     fig.savefig(path, dpi=130, bbox_inches="tight")
+    if show:
+        return path
     plt.close(fig)
     logger.info("wrote figure %s", path.name)
     return path
 
 
-def plot_target_distribution(df: pd.DataFrame, out: Path) -> Path:
+def plot_target_distribution(df: pd.DataFrame, out: Path, show: bool = False) -> Path:
     """(1) Target distribution in raw and log space."""
     values = df["unit_price"].dropna()
     fig, axes = plt.subplots(1, 2, figsize=FIGSIZE_WIDE)
@@ -65,10 +73,10 @@ def plot_target_distribution(df: pd.DataFrame, out: Path) -> Path:
     axes[1].set_ylabel(JA["sites"])
     axes[1].set_title(f"対数変換後 log10 target (skew={np.log1p(values).skew():.1f})")
     fig.suptitle(f"目的変数の分布 target distribution - {len(values):,} sites", fontsize=12)
-    return _save(fig, out)
+    return _save(fig, out, show=show)
 
 
-def plot_price_by_municipality(df: pd.DataFrame, out: Path, top_n: int = 20) -> Path:
+def plot_price_by_municipality(df: pd.DataFrame, out: Path, top_n: int = 20, show: bool = False) -> Path:
     """(2) Median unit price by municipality."""
     stats = (
         df.groupby("municipality", observed=True)["unit_price"]
@@ -83,10 +91,10 @@ def plot_price_by_municipality(df: pd.DataFrame, out: Path, top_n: int = 20) -> 
     ax.set_xlabel(JA["unit_price_short"] + " / median")
     ax.set_title(f"区市町村別の中央単価 Top {top_n} municipalities by median unit price")
     ax.margins(x=0.18)
-    return _save(fig, out)
+    return _save(fig, out, show=show)
 
 
-def plot_pred_vs_actual(df: pd.DataFrame, out: Path, title: str = "Test set") -> Path:
+def plot_pred_vs_actual(df: pd.DataFrame, out: Path, title: str = "Test set", show: bool = False) -> Path:
     """(3) Predicted vs. actual with the identity line."""
     fig, axes = plt.subplots(1, 2, figsize=FIGSIZE_WIDE)
     for ax, logscale in zip(axes, (False, True)):
@@ -105,10 +113,10 @@ def plot_pred_vs_actual(df: pd.DataFrame, out: Path, title: str = "Test set") ->
         ax.set_ylabel(JA["predicted"])
         ax.legend(fontsize=8)
     fig.suptitle(f"予測 vs 実測 predicted vs actual - {title} (n={len(df):,})", fontsize=12)
-    return _save(fig, out)
+    return _save(fig, out, show=show)
 
 
-def plot_residuals(df: pd.DataFrame, out: Path) -> Path:
+def plot_residuals(df: pd.DataFrame, out: Path, show: bool = False) -> Path:
     """(4) Residual diagnostics: vs. fitted value, vs. site area, distribution."""
     fig, axes = plt.subplots(1, 3, figsize=(15.0, 4.6))
     axes[0].scatter(df["y_pred"], df["residual"], s=7, alpha=0.35, color="#3b6ea5")
@@ -131,10 +139,10 @@ def plot_residuals(df: pd.DataFrame, out: Path) -> Path:
     axes[2].set_ylabel(JA["sites"])
     axes[2].set_title(f"残差の分布 (mean={df['residual'].mean():,.0f})")
     fig.suptitle("残差診断 residual diagnostics", fontsize=12)
-    return _save(fig, out)
+    return _save(fig, out, show=show)
 
 
-def plot_feature_importance(table: pd.DataFrame, out: Path, model_name: str = "") -> Path:
+def plot_feature_importance(table: pd.DataFrame, out: Path, model_name: str = "", show: bool = False) -> Path:
     """(5) Top-N feature importance, plotted as a share of the total.
 
     Raw split gains span three orders of magnitude (the top feature reaches
@@ -153,10 +161,10 @@ def plot_feature_importance(table: pd.DataFrame, out: Path, model_name: str = ""
     title = f"特徴量重要度 Top {len(table)} features"
     ax.set_title(f"{title} ({model_name})" if model_name else title)
     ax.margins(x=0.14)
-    return _save(fig, out)
+    return _save(fig, out, show=show)
 
 
-def plot_model_comparison(summary: pd.DataFrame, out: Path) -> Path:
+def plot_model_comparison(summary: pd.DataFrame, out: Path, show: bool = False) -> Path:
     """(6) MAE and RMSE per model, on validation and test."""
     models = summary["model"].drop_duplicates().tolist()
     x = np.arange(len(models))
@@ -175,10 +183,10 @@ def plot_model_comparison(summary: pd.DataFrame, out: Path) -> Path:
         ax.set_title(f"モデル別 {label} by model")
         ax.legend(fontsize=8)
     fig.suptitle("モデル比較 model comparison (低いほど良い lower is better)", fontsize=12)
-    return _save(fig, out)
+    return _save(fig, out, show=show)
 
 
-def plot_error_by_municipality(df: pd.DataFrame, out: Path, top_n: int = 15) -> Path:
+def plot_error_by_municipality(df: pd.DataFrame, out: Path, top_n: int = 15, show: bool = False) -> Path:
     """(7) Map substitute: total absolute error and MAE per municipality."""
     stats = (
         df.groupby("municipality", observed=True)
@@ -196,11 +204,15 @@ def plot_error_by_municipality(df: pd.DataFrame, out: Path, top_n: int = 15) -> 
     axes[1].set_xlabel("MAE (円/㎡)")
     axes[1].set_title("区市町村別の平均絶対誤差 MAE per municipality")
     fig.suptitle("誤差の区別集計 error by municipality (test set)", fontsize=12)
-    return _save(fig, out)
+    return _save(fig, out, show=show)
 
 
 def plot_learning_curve(
-    train_sizes: np.ndarray, train_scores: np.ndarray, val_scores: np.ndarray, out: Path
+    train_sizes: np.ndarray,
+    train_scores: np.ndarray,
+    val_scores: np.ndarray,
+    out: Path,
+    show: bool = False,
 ) -> Path:
     """Auxiliary figure: generalisation gap as the training year grows."""
     fig, ax = plt.subplots(figsize=FIGSIZE_SQUARE)
@@ -210,10 +222,10 @@ def plot_learning_curve(
     ax.set_ylabel("MAE (円/㎡)")
     ax.set_title("学習曲線 learning curve (LightGBM)")
     ax.legend(fontsize=8)
-    return _save(fig, out)
+    return _save(fig, out, show=show)
 
 
-def plot_leakage_effect(table: pd.DataFrame, out: Path) -> Path:
+def plot_leakage_effect(table: pd.DataFrame, out: Path, show: bool = False) -> Path:
     """Auxiliary figure: the measured cost of the leakage columns."""
     fig, ax = plt.subplots(figsize=(8.4, 4.6))
     labels = table["setting"].tolist()
@@ -234,4 +246,4 @@ def plot_leakage_effect(table: pd.DataFrame, out: Path) -> Path:
     handles1, labels1 = ax.get_legend_handles_labels()
     handles2, labels2 = ax2.get_legend_handles_labels()
     ax.legend(handles1 + handles2, labels1 + labels2, fontsize=8, loc="upper left")
-    return _save(fig, out)
+    return _save(fig, out, show=show)

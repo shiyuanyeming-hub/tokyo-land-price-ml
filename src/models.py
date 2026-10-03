@@ -32,8 +32,13 @@ TREE_ENCODER = "ordinal"
 #: Encoders for linear models, where an arbitrary integer code would be wrong.
 LINEAR_ENCODER = "onehot"
 
-#: Models whose bias-variance profile benefits from working on log(price).
-LOG_FRIENDLY = ("ridge", "linear")
+#: Models for which fitting ``log1p(target)`` is the *measured* better default.
+#: It is empty on purpose: every model in this project does better on the raw
+#: target except LightGBM, and even there the gain is small (582 -> 536 JPY/m2).
+#: Ridge is the extreme case - log1p makes it six times worse (325 -> 1972),
+#: because the target's heavy *lower* tail (a 0.22 JPY/m2 forest plot) dominates a
+#: relative-error objective. See reports/improvements.md for the full comparison.
+LOG_FRIENDLY: tuple[str, ...] = ()
 
 
 class TargetLogRegressor(BaseEstimator, RegressorMixin):

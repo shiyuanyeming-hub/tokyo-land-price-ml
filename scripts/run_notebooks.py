@@ -10,6 +10,7 @@ written notebook behind.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -23,6 +24,10 @@ TIMEOUT_SECONDS = 900
 
 def run_notebook(path: Path) -> None:
     """Execute one notebook and write the executed copy back to disk."""
+    # The pipeline calls matplotlib.use("Agg") for headless CLI runs. In a
+    # notebook that suppresses every figure, so switch to the inline backend for
+    # the kernel: it captures pyplot figures into display_data outputs.
+    os.environ["MPLBACKEND"] = "module://matplotlib_inline.backend_inline"
     print(f"executing {path.relative_to(REPO_ROOT)} ...", flush=True)
     notebook = nbformat.read(path, as_version=4)
     client = NotebookClient(
