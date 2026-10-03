@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tokyo-land-price-ml"
+version = "1.0.0"
+description = "Predicting official Tokyo land prices (JPY per square metre) from 地価公示 / 基準地価 open data."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Tokyo Land Price ML contributors" }]
+dependencies = [
+    "pandas>=2.2,<4.0",
+    "numpy>=2.0,<3.0",
+    "scikit-learn>=1.5,<2.0",
+    "lightgbm>=4.5,<5.0",
+    "matplotlib>=3.9,<4.0",
+    "PyYAML>=6.0,<7.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "nbformat>=5.10", "nbclient>=0.10", "ipykernel>=6.29"]
+
+[tool.setuptools]
+packages = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]

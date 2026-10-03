@@ -1,0 +1,16 @@
+# Runtime dependencies, pinned to the versions the reported results were produced with.
+# Python 3.13.
+pandas>=2.2,<4.0
+numpy>=2.0,<3.0
+scikit-learn>=1.5,<2.0
+lightgbm>=4.5,<5.0
+matplotlib>=3.9,<4.0
+PyYAML>=6.0,<7.0
+
+# Development / verification
+pytest>=8.0,<10.0
+
+# Notebooks (only needed to re-run notebooks/*.ipynb)
+nbformat>=5.10
+nbclient>=0.10
+ipykernel>=6.29

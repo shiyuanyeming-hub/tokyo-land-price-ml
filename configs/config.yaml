@@ -1,0 +1,147 @@
+# =============================================================================
+# Tokyo Land Price ML - experiment configuration
+# All paths are RELATIVE to the repository root.
+# =============================================================================
+
+project:
+  name: tokyo-land-price-ml
+  random_seed: 42
+
+# --- Data sources (raw files are never modified) -----------------------------
+data:
+  encoding: cp932
+  skiprows: 1                 # row 0 is a title row, row 1 is the real header
+  # Column-name suffixes differ between the two source series.
+  # 公示地価 uses 標準地*, 基準地価 uses 基準地*; we normalise them in data_loader.
+  raw_dir: data/raw
+  processed_dir: data/processed
+  sources:
+    kouji_r7: tokyo_kouji_r7.csv   # 地価公示 (令和7年)
+    kouji_r8: tokyo_kouji_r8.csv   # 地価公示 (令和8年)
+    kijun_r6: tokyo_kijun_r6.csv   # 基準地価 (令和6年)
+    kijun_r7: tokyo_kijun_r7.csv   # 基準地価 (令和7年)
+
+# --- Panel / split definition ------------------------------------------------
+# Honest setup: learn "next year's price per sqm" from a PAST year, then
+# evaluate on the FUTURE year (never seen during training).
+#
+#   train : 地価公示 令和7年  (features = R7 attributes + R7 price level)
+#   val   : 地価公示 令和8年  (half of the rows)
+#   test  : 地価公示 令和8年  (the other half, disjoint sites)
+#
+# The R7 training rows carry no prior-year *price* column in our four files
+# (地価公示 令和6年 is not downloaded), so they train on attributes only.
+# The R8 rows are evaluated as genuine one-year-ahead forecasts: their
+# "前年価格" column reproduces the R7 observed price (verified: 97.8% exact
+# match on matched panel keys), which is exactly the information that a real
+# forecasting model would have. We feed that information through the explicit
+# `lag_unit_price` feature instead of through the leaky raw column.
+split:
+  strategy: temporal          # temporal | random  (random is used for a control experiment)
+  train_year: kouji_r7
+  predict_year: kouji_r8
+  val_fraction: 0.5           # of predict_year, taken by a seeded permutation
+  random_state: 42
+
+# --- Baseline sanity check on the secondary series (基準地価) -----------------
+kijun_check:
+  enabled: true
+  train_year: kijun_r7
+  test_year: kijun_r6
+
+# --- Target / feature definition ---------------------------------------------
+target:
+  # 当年価格（円） is the TOTAL value of the site, so we predict the unit price.
+  # Raw column names that must be composed to build the target.
+  numerator: 当年価格（円）
+  denominator: 地積（㎡）
+  unit: JPY/m2
+  log_transform: true         # train on log1p(target) and back-transform for metrics
+
+features:
+  # Numeric attributes taken from the SAME year as the features (i.e. known at
+  # prediction time because they are land attributes, not prices).
+  numeric:
+    - 地積（㎡）
+    - 間口（比率）
+    - 奥行（比率）
+    - 前面道路の幅員(m)
+    - 交通施設までの道路距離（m）
+    - 指定建蔽率（％）
+    - 指定容積率（％）
+    - 地上階数
+  categorical:
+    - 区市町村名
+    - 用途区分
+    - 利用の現況
+    - 構造
+    - 前面道路区分
+    - 前面道路の方位
+    - 防火地域
+    - 主要交通施設
+    - 標準地名
+    - 都分類地区１          # 基準地価 only; imputed to "unknown" for 公示地価
+    - 都分類地区２
+  derived:
+    - 容積建蔽比            # 指定容積率 / 指定建蔽率
+    - 最寄駅距離帯          # binned 交通施設までの道路距離
+    - 地積帯                # binned 地積（㎡）
+    - 前面道路幅員帯        # binned 前面道路の幅員(m)
+  # The one legitimately lagged feature: the unit price observed for the SAME
+  # location in the PREVIOUS year. Available at prediction time, by definition.
+  lag_unit_price: true
+  # Documented prior for the "lag multiplied by a growth assumption" baseline.
+  # 令和8年 saw a median year-on-year factor of 1.0714 (measured in
+  # reports/model_comparison.md), and 97.5% of sites rose. A forecast made at the
+  # start of 令和8年 would not know that, so this baseline uses a *fixed, assumed*
+  # 5% annual rise rather than the realised figure.
+  assumed_annual_growth: 0.05
+
+# Columns that are LEAKAGE for the current-year target: they are prices derived
+# from the very value we are trying to predict. Used only by the controlled
+# leak experiment. tests/test_no_leakage.py asserts they stay out of the model.
+leakage_columns:
+  - 前年価格（円）
+  - 対前年変動率（％）
+
+# --- Models ------------------------------------------------------------------
+models:
+  lightgbm:
+    n_estimators: 600
+    learning_rate: 0.05
+    num_leaves: 31
+    min_child_samples: 20
+    subsample: 0.9
+    subsample_freq: 1
+    colsample_bytree: 0.9
+    reg_lambda: 1.0
+    verbose: -1
+  random_forest:
+    n_estimators: 400
+    min_samples_leaf: 2
+  gradient_boosting:
+    n_estimators: 400
+    learning_rate: 0.05
+    max_depth: 4
+  ridge:
+    alpha: 1.0
+
+# --- Cross validation --------------------------------------------------------
+cv:
+  n_splits: 5
+  strategy: kfold             # kfold on the training year (chronological CV is
+                              # not meaningful: one year == one timestamp)
+
+# --- Evaluation --------------------------------------------------------------
+evaluation:
+  metrics: [mae, rmse, r2, mape]
+  error_analysis:
+    top_n: 20
+    persist_predictions: true   # write data/processed/test_predictions.csv
+
+# --- Plots -------------------------------------------------------------------
+plots:
+  dpi: 130
+  style: seaborn-v0_8-whitegrid
+  # Japanese labels render as tofu on a bare install, so all figure text is English.
+  language: en

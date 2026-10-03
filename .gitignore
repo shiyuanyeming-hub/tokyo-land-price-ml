@@ -1,0 +1,31 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Generated pipeline artefacts (recreate with `make all`)
+data/processed/*
+!data/processed/.gitkeep
+# reports/ is intentionally TRACKED: the README embeds the measured numbers and
+# figures, so a clone shows the same results without re-running the pipeline.
+
+# Extracted OpenMP runtime (see scripts/setup_libomp_macos.sh); a binary, never committed
+.libs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# NOTE: data/raw/*.csv IS tracked on purpose - the four official CSVs are small
+# (~1.9 MB total) and committing them keeps the project reproducible offline.
