@@ -11,7 +11,7 @@
 `python -m src.pipeline --stage all` の1コマンドで、データ読込から
 モデル比較・誤差分析・レポート生成までが再現します。
 
-- **テスト**: `python -m pytest` で **97 passed / 4 skipped**
+- **テスト**: `python -m pytest` で **102 passed / 4 skipped**
   （skip は LightGBM 固有の 4 件。理由は実行ログに表示されます）
 - **ベストモデル（時系列分割・test）**: GradientBoosting で
   **MAE 269 円/㎡ / R² 0.991**（前年単価をそのまま使うベースラインは MAE 752 円/㎡）
@@ -121,7 +121,7 @@
 | 機械学習 | scikit-learn 1.9（Pipeline / ColumnTransformer / KFold）、LightGBM 4.7 |
 | 可視化 | matplotlib 3.11 |
 | 設定 | PyYAML（`configs/config.yaml`） |
-| テスト | pytest（97 passed / 4 skipped。skip は LightGBM 固有） |
+| テスト | pytest（102 passed / 4 skipped。skip は LightGBM 固有の 4 件） |
 | その他 | logging、argparse、pathlib、dataclasses |
 
 **実行環境（`reports/metrics.json` に記録された実測値）**:
@@ -321,9 +321,9 @@ kijun_r7  1280       50          1280                    0     [forest_law]
 
 ```console
 $ python -m pytest
-........................................................................ [ 71%]
-.........s...s........ss.....                                            [100%]
-97 passed, 4 skipped in 6.23s
+........................................................................ [ 67%]
+.............s...s.........ss.....                                       [100%]
+102 passed, 4 skipped in 4.10s
 
 $ python -m pytest -q -rs | grep SKIPPED
 SKIPPED [4] tests/_deps.py:44: lightgbm unavailable: OSError: dlopen(... lib_lightgbm.dylib ...)
