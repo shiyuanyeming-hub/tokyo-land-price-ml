@@ -1,0 +1,2327 @@
+{
+  "generated_by": "python -m src.pipeline --stage all",
+  "environment": {
+    "python": "3.13.12",
+    "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+    "pandas": "3.0.6",
+    "numpy": "2.5.3",
+    "scikit_learn": "1.9.1",
+    "lightgbm": "4.7.0",
+    "primary_model_for_experiments": "lightgbm"
+  },
+  "config": {
+    "project": {
+      "name": "tokyo-land-price-ml",
+      "random_seed": 42
+    },
+    "data": {
+      "encoding": "cp932",
+      "skiprows": 1,
+      "raw_dir": "data/raw",
+      "processed_dir": "data/processed",
+      "sources": {
+        "kouji_r7": "tokyo_kouji_r7.csv",
+        "kouji_r8": "tokyo_kouji_r8.csv",
+        "kijun_r6": "tokyo_kijun_r6.csv",
+        "kijun_r7": "tokyo_kijun_r7.csv"
+      }
+    },
+    "split": {
+      "strategy": "temporal",
+      "train_year": "kouji_r7",
+      "predict_year": "kouji_r8",
+      "val_fraction": 0.5,
+      "random_state": 42
+    },
+    "kijun_check": {
+      "enabled": true,
+      "train_year": "kijun_r7",
+      "test_year": "kijun_r6"
+    },
+    "target": {
+      "numerator": "当年価格（円）",
+      "denominator": "地積（㎡）",
+      "unit": "JPY/m2",
+      "log_transform": true
+    },
+    "features": {
+      "numeric": [
+        "地積（㎡）",
+        "間口（比率）",
+        "奥行（比率）",
+        "前面道路の幅員(m)",
+        "交通施設までの道路距離（m）",
+        "指定建蔽率（％）",
+        "指定容積率（％）",
+        "地上階数"
+      ],
+      "categorical": [
+        "区市町村名",
+        "用途区分",
+        "利用の現況",
+        "構造",
+        "前面道路区分",
+        "前面道路の方位",
+        "防火地域",
+        "主要交通施設",
+        "標準地名",
+        "都分類地区１",
+        "都分類地区２"
+      ],
+      "derived": [
+        "容積建蔽比",
+        "最寄駅距離帯",
+        "地積帯",
+        "前面道路幅員帯"
+      ],
+      "lag_unit_price": true,
+      "assumed_annual_growth": 0.05
+    },
+    "leakage_columns": [
+      "前年価格（円）",
+      "対前年変動率（％）"
+    ],
+    "models": {
+      "lightgbm": {
+        "n_estimators": 600,
+        "learning_rate": 0.05,
+        "num_leaves": 31,
+        "min_child_samples": 20,
+        "subsample": 0.9,
+        "subsample_freq": 1,
+        "colsample_bytree": 0.9,
+        "reg_lambda": 1.0,
+        "verbose": -1
+      },
+      "random_forest": {
+        "n_estimators": 400,
+        "min_samples_leaf": 2
+      },
+      "gradient_boosting": {
+        "n_estimators": 400,
+        "learning_rate": 0.05,
+        "max_depth": 4
+      },
+      "ridge": {
+        "alpha": 1.0
+      }
+    },
+    "cv": {
+      "n_splits": 5,
+      "strategy": "kfold"
+    },
+    "evaluation": {
+      "metrics": [
+        "mae",
+        "rmse",
+        "r2",
+        "mape"
+      ],
+      "error_analysis": {
+        "top_n": 20,
+        "persist_predictions": true
+      }
+    },
+    "plots": {
+      "dpi": 130,
+      "style": "seaborn-v0_8-whitegrid",
+      "language": "en"
+    }
+  },
+  "results": {
+    "split": {
+      "train_source": "kouji_r7",
+      "predict_source": "kouji_r8",
+      "n_train": 2560,
+      "n_val": 1280,
+      "n_test": 1280,
+      "train_year": [
+        2025
+      ],
+      "predict_year": [
+        2026
+      ],
+      "sites_in_both_years": 2518,
+      "overlap_val_test": 0,
+      "lag_coverage_train": 0.99296875,
+      "lag_coverage_predict": 0.977734375,
+      "n_train_with_lag": 2542,
+      "kijun": {
+        "train_year": "kijun_r7",
+        "test_year": "kijun_r6",
+        "n_train": 1280,
+        "n_test": 1277,
+        "rows": 1280.0,
+        "lag_available": 1268.0,
+        "lag_coverage": 0.990625
+      }
+    },
+    "eda": {
+      "price_stats": {
+        "kouji_r7": {
+          "n": 2560,
+          "min": 0.21949644932214332,
+          "p1": 44.52988077385636,
+          "median": 3093.730407523511,
+          "mean": 5753.452682180003,
+          "p99": 45666.96694460953,
+          "max": 133259.91189427313,
+          "skew_raw": 6.727962836035213,
+          "skew_log1p": -1.1513728202522489,
+          "below_1000_yen": 415,
+          "below_1000_yen_pct": 16.2109375
+        },
+        "kouji_r8": {
+          "n": 2560,
+          "min": 0.21949644932214332,
+          "p1": 45.784596303671876,
+          "median": 3336.0030699908393,
+          "mean": 6436.900305228615,
+          "p99": 52523.84089995978,
+          "max": 147797.35682819382,
+          "skew_raw": 6.473398339308368,
+          "skew_log1p": -1.1004051990537893,
+          "below_1000_yen": 393,
+          "below_1000_yen_pct": 15.351562499999998
+        },
+        "kijun_r6": {
+          "n": 1277,
+          "min": 0.800662617338487,
+          "p1": 25.43393098765247,
+          "median": 3012.987012987013,
+          "mean": 5897.495860604258,
+          "p99": 52665.25675582281,
+          "max": 119263.45609065155,
+          "skew_raw": 5.531853479572444,
+          "skew_log1p": -0.9428782242561359,
+          "below_1000_yen": 248,
+          "below_1000_yen_pct": 19.42051683633516
+        },
+        "kijun_r7": {
+          "n": 1280,
+          "min": 0.800662617338487,
+          "p1": 24.11801180118012,
+          "median": 3275.2255460588794,
+          "mean": 6611.470204498963,
+          "p99": 58338.853838065195,
+          "max": 132861.18980169971,
+          "skew_raw": 5.3367188108019885,
+          "skew_log1p": -0.900727928745731,
+          "below_1000_yen": 237,
+          "below_1000_yen_pct": 18.515625
+        }
+      },
+      "splits": {
+        "train_source": "kouji_r7",
+        "predict_source": "kouji_r8",
+        "n_train": 2560,
+        "n_val": 1280,
+        "n_test": 1280,
+        "train_year": [
+          2025
+        ],
+        "predict_year": [
+          2026
+        ],
+        "sites_in_both_years": 2518,
+        "overlap_val_test": 0,
+        "lag_coverage_train": 0.99296875,
+        "lag_coverage_predict": 0.977734375,
+        "n_train_with_lag": 2542,
+        "kijun": {
+          "train_year": "kijun_r7",
+          "test_year": "kijun_r6",
+          "n_train": 1280,
+          "n_test": 1277,
+          "rows": 1280.0,
+          "lag_available": 1268.0,
+          "lag_coverage": 0.990625
+        }
+      },
+      "municipality_counts": {
+        "kouji_r8_n_municipalities": 57,
+        "kouji_r8_top5": {
+          "八王子市": 147,
+          "世田谷区": 141,
+          "練馬区": 108,
+          "足立区": 108,
+          "町田市": 97
+        }
+      },
+      "use_district_counts": {
+        "kouji_r8": {
+          "１低専": 853,
+          "商業": 536,
+          "近商": 276,
+          "１中専": 274,
+          "１住居": 232,
+          "準工": 184,
+          "２中専": 82,
+          "unknown": 34,
+          "２住居": 31,
+          "準住居": 27,
+          "工業": 17,
+          "工専": 7,
+          "２低専": 7
+        },
+        "kijun_r7": {
+          "１低専": 436,
+          "商業": 299,
+          "近商": 151,
+          "１住居": 102,
+          "１中専": 99,
+          "準工": 75,
+          "unknown": 43,
+          "２中専": 33,
+          "準住居": 14,
+          "２住居": 9,
+          "２低専": 9,
+          "工専": 5,
+          "工業": 5
+        }
+      },
+      "site_area_stats": {
+        "kouji_r8_median": 161.0,
+        "kouji_r8_max": 126956.0,
+        "kouji_r8_min": 46.0
+      },
+      "lag_column_check": {
+        "kouji_r8_prev_vs_kouji_r7": {
+          "matched_sites": 2518.0,
+          "key_match_pct": 98.359375,
+          "exact_match_pct": 100.0,
+          "mismatched_sites": 0,
+          "within_0.1pct": 100.0
+        },
+        "kijun_r7_prev_vs_kijun_r6": {
+          "matched_sites": 1277.0,
+          "key_match_pct": 99.765625,
+          "exact_match_pct": 100.0,
+          "mismatched_sites": 0,
+          "within_0.1pct": 100.0
+        }
+      },
+      "missing_after_cleaning": {
+        "kouji_r7": {
+          "floors_total": 41,
+          "far_bcr_ratio": 8
+        },
+        "kouji_r8": {
+          "floors_total": 41,
+          "far_bcr_ratio": 8
+        },
+        "kijun_r6": {
+          "station_distance": 51,
+          "bcr": 8,
+          "far": 8,
+          "floors_total": 23,
+          "far_bcr_ratio": 8
+        },
+        "kijun_r7": {
+          "station_distance": 49,
+          "bcr": 8,
+          "far": 8,
+          "floors_total": 28,
+          "far_bcr_ratio": 8
+        }
+      },
+      "feature_reference": {
+        "feature_columns": [
+          "site_area",
+          "frontage_ratio",
+          "depth_ratio",
+          "road_width",
+          "station_distance",
+          "bcr",
+          "far",
+          "floors_total",
+          "far_bcr_ratio",
+          "municipality",
+          "use_district",
+          "current_use",
+          "structure",
+          "road_type",
+          "road_direction",
+          "fire_zone",
+          "nearest_station",
+          "locality",
+          "pref_zone_1",
+          "pref_zone_2",
+          "site_area_band",
+          "station_distance_band",
+          "road_width_band",
+          "lag_unit_price"
+        ],
+        "leaky_columns_excluded": [
+          "prev_unit_price",
+          "change_rate_prior_year"
+        ]
+      }
+    },
+    "runs": {
+      "median": {
+        "metrics": {
+          "train": {
+            "mae": 4212.389366400795,
+            "rmse": 10510.465838639562,
+            "r2": -0.06841791117697915,
+            "mape": 2714.9554518725026,
+            "mdape": 60.82615584611143,
+            "n": 2560,
+            "fit_seconds": 4.7291629016399384e-05
+          },
+          "val": {
+            "mae": 4704.650510030695,
+            "rmse": 11087.43761849725,
+            "r2": -0.09289715176175051,
+            "mape": 2202.4772162271192,
+            "mdape": 63.676885965986045,
+            "n": 1280
+          },
+          "test": {
+            "mae": 4911.128358124648,
+            "rmse": 12610.180782593001,
+            "r2": -0.08109977571749671,
+            "mape": 3198.298752749895,
+            "mdape": 61.78085874418163,
+            "n": 1280
+          }
+        },
+        "cv": {
+          "cv_mae_mean": 4212.798690484016,
+          "cv_mae_std": 510.3507060669259,
+          "cv_r2_mean": -0.07525369584001318,
+          "cv_r2_std": 0.017365772755902145
+        },
+        "importance": []
+      },
+      "mean": {
+        "metrics": {
+          "train": {
+            "mae": 4927.666916140995,
+            "rmse": 10168.371038023019,
+            "r2": 0.0,
+            "mape": 5068.010781537223,
+            "mdape": 88.78184552758239,
+            "n": 2560,
+            "fit_seconds": 2.9833056032657623e-05
+          },
+          "val": {
+            "mae": 5240.252793424489,
+            "rmse": 10621.21106109947,
+            "r2": -0.0029170014986865667,
+            "mape": 4109.124033924626,
+            "mdape": 83.07731914459414,
+            "n": 1280
+          },
+          "test": {
+            "mae": 5452.438714994375,
+            "rmse": 12153.947477522788,
+            "r2": -0.0042870490102810965,
+            "mape": 5961.3203254588125,
+            "mdape": 82.97515416490087,
+            "n": 1280
+          }
+        },
+        "cv": {
+          "cv_mae_mean": 4927.668072977462,
+          "cv_mae_std": 481.871269597297,
+          "cv_r2_mean": -0.003738269571430175,
+          "cv_r2_std": 0.003707487404469204
+        },
+        "importance": []
+      },
+      "lag": {
+        "metrics": {
+          "train": {
+            "mae": 534.8573216840675,
+            "rmse": 1162.0816429855972,
+            "r2": 0.98693917797004,
+            "mape": 7.245494191800722,
+            "mdape": 5.9904867116530784,
+            "n": 2560,
+            "fit_seconds": 4.8500485718250275e-05
+          },
+          "val": {
+            "mae": 733.4462958007449,
+            "rmse": 1950.1910668564915,
+            "r2": 0.9661879703676881,
+            "mape": 10.04695718115482,
+            "mdape": 6.825958444357081,
+            "n": 1280
+          },
+          "test": {
+            "mae": 751.555750378923,
+            "rmse": 1794.2269459761155,
+            "r2": 0.9781134201441457,
+            "mape": 10.01625418995551,
+            "mdape": 6.7796610169491505,
+            "n": 1280
+          }
+        },
+        "cv": {},
+        "importance": []
+      },
+      "lag_drift": {
+        "metrics": {
+          "train": {
+            "mae": 296.31988429221906,
+            "rmse": 749.2269864399941,
+            "r2": 0.9945709473457062,
+            "mape": 4.13451258684034,
+            "mdape": 2.5970520289272825,
+            "n": 2560,
+            "fit_seconds": 4.6166591346263885e-05
+          },
+          "val": {
+            "mae": 472.1094808914219,
+            "rmse": 1624.619887136695,
+            "r2": 0.9765350060946001,
+            "mape": 6.881053861131308,
+            "mdape": 3.0954963316768884,
+            "n": 1280
+          },
+          "test": {
+            "mae": 479.3662688980659,
+            "rmse": 1362.6125907101298,
+            "r2": 0.9873768440737045,
+            "mape": 6.8176250193884345,
+            "mdape": 2.9734528832630023,
+            "n": 1280
+          }
+        },
+        "cv": {
+          "cv_mae_mean": 296.30423178026,
+          "cv_mae_std": 12.044217853382712,
+          "cv_r2_mean": 0.9938218214272874,
+          "cv_r2_std": 0.001877869305201161
+        },
+        "importance": []
+      },
+      "ridge": {
+        "metrics": {
+          "train": {
+            "mae": 1490.8013402884624,
+            "rmse": 7672.500573201548,
+            "r2": 0.4306607969324483,
+            "mape": 20.648693858532273,
+            "mdape": 13.6406972440885,
+            "n": 2560,
+            "fit_seconds": 0.026193000376224518
+          },
+          "val": {
+            "mae": 1557.6906828847432,
+            "rmse": 7682.655382461992,
+            "r2": 0.4752654978199188,
+            "mape": 21.13413124474722,
+            "mdape": 14.354308499588887,
+            "n": 1280
+          },
+          "test": {
+            "mae": 1972.3857560305428,
+            "rmse": 11351.90608933825,
+            "r2": 0.12388577644008614,
+            "mape": 20.3582282555114,
+            "mdape": 14.032574278975897,
+            "n": 1280
+          }
+        },
+        "cv": {
+          "cv_mae_mean": 1701.4149281593986,
+          "cv_mae_std": 590.0423236246397,
+          "cv_r2_mean": 0.26662949075265885,
+          "cv_r2_std": 0.6255413202428994
+        },
+        "importance": [
+          {
+            "feature": "municipality",
+            "importance": 12.925658656676418,
+            "importance_share": 0.2620659912677914
+          },
+          {
+            "feature": "locality",
+            "importance": 12.925658656676331,
+            "importance_share": 0.2620659912677896
+          },
+          {
+            "feature": "site_area_band",
+            "importance": 6.988935869930085,
+            "importance_share": 0.1416997350238864
+          },
+          {
+            "feature": "nearest_station",
+            "importance": 6.963484802166301,
+            "importance_share": 0.14118371804715038
+          },
+          {
+            "feature": "use_district",
+            "importance": 2.9091716054814856,
+            "importance_share": 0.05898306313116369
+          },
+          {
+            "feature": "current_use",
+            "importance": 1.8035970387702467,
+            "importance_share": 0.036567687447698206
+          },
+          {
+            "feature": "far",
+            "importance": 0.9765533010353071,
+            "importance_share": 0.019799486870207734
+          },
+          {
+            "feature": "structure",
+            "importance": 0.8527363295785393,
+            "importance_share": 0.017289114422469186
+          },
+          {
+            "feature": "road_type",
+            "importance": 0.635456323115184,
+            "importance_share": 0.012883791507100418
+          },
+          {
+            "feature": "station_distance_band",
+            "importance": 0.516411092199642,
+            "importance_share": 0.010470165457222468
+          },
+          {
+            "feature": "far_bcr_ratio",
+            "importance": 0.48595339362246304,
+            "importance_share": 0.009852639713941205
+          },
+          {
+            "feature": "road_direction",
+            "importance": 0.4755892771792623,
+            "importance_share": 0.009642508646624236
+          },
+          {
+            "feature": "road_width_band",
+            "importance": 0.23665691747899903,
+            "importance_share": 0.0047981871807731115
+          },
+          {
+            "feature": "lag_unit_price",
+            "importance": 0.2060545432439693,
+            "importance_share": 0.00417772815798215
+          },
+          {
+            "feature": "station_distance",
+            "importance": 0.18630201168605554,
+            "importance_share": 0.003777248236589577
+          },
+          {
+            "feature": "site_area",
+            "importance": 0.11539304981963627,
+            "importance_share": 0.0023395785692341964
+          },
+          {
+            "feature": "fire_zone",
+            "importance": 0.06324240766030167,
+            "importance_share": 0.001282231311678497
+          },
+          {
+            "feature": "depth_ratio",
+            "importance": 0.02169337435186679,
+            "importance_share": 0.0004398302480724076
+          },
+          {
+            "feature": "bcr",
+            "importance": 0.019048788809041203,
+            "importance_share": 0.0003862116317850993
+          },
+          {
+            "feature": "frontage_ratio",
+            "importance": 0.005946264020161848,
+            "importance_share": 0.00012055970346848127
+          }
+        ]
+      },
+      "random_forest": {
+        "metrics": {
+          "train": {
+            "mae": 86.02348466160853,
+            "rmse": 336.2733859937965,
+            "r2": 0.9989063402632294,
+            "mape": 1.7068291939201512,
+            "mdape": 0.6086057513491208,
+            "n": 2560,
+            "fit_seconds": 0.48629875015467405
+          },
+          "val": {
+            "mae": 277.21976577889785,
+            "rmse": 1449.0337295370646,
+            "r2": 0.9813330267575509,
+            "mape": 5.0161726889447795,
+            "mdape": 1.6712964965001782,
+            "n": 1280
+          },
+          "test": {
+            "mae": 297.4743092972747,
+            "rmse": 1304.0192470870063,
+            "r2": 0.9884391130386341,
+            "mape": 5.382800412844247,
+            "mdape": 1.6629880967813202,
+            "n": 1280
+          }
+        },
+        "cv": {
+          "cv_mae_mean": 224.24636390396844,
+          "cv_mae_std": 63.231203503495344,
+          "cv_r2_mean": 0.9923141549935905,
+          "cv_r2_std": 0.0030461550343032005
+        },
+        "importance": [
+          {
+            "feature": "lag_unit_price",
+            "importance": 0.9957632084360855,
+            "importance_share": 0.9957632084360855
+          },
+          {
+            "feature": "site_area",
+            "importance": 0.0007409280939888382,
+            "importance_share": 0.0007409280939888382
+          },
+          {
+            "feature": "nearest_station",
+            "importance": 0.000717738628521642,
+            "importance_share": 0.000717738628521642
+          },
+          {
+            "feature": "station_distance",
+            "importance": 0.0006395644212644002,
+            "importance_share": 0.0006395644212644002
+          },
+          {
+            "feature": "floors_total",
+            "importance": 0.0003455873683600857,
+            "importance_share": 0.0003455873683600857
+          },
+          {
+            "feature": "road_width",
+            "importance": 0.0002480546952595128,
+            "importance_share": 0.0002480546952595128
+          },
+          {
+            "feature": "locality",
+            "importance": 0.00021383936941258379,
+            "importance_share": 0.00021383936941258379
+          },
+          {
+            "feature": "road_direction",
+            "importance": 0.00019903403113443103,
+            "importance_share": 0.00019903403113443103
+          },
+          {
+            "feature": "depth_ratio",
+            "importance": 0.00019726663817518317,
+            "importance_share": 0.00019726663817518317
+          },
+          {
+            "feature": "current_use",
+            "importance": 0.00016539085573485246,
+            "importance_share": 0.00016539085573485246
+          },
+          {
+            "feature": "road_width_band",
+            "importance": 0.0001505136099434534,
+            "importance_share": 0.0001505136099434534
+          },
+          {
+            "feature": "site_area_band",
+            "importance": 0.00011811817017547981,
+            "importance_share": 0.00011811817017547981
+          },
+          {
+            "feature": "municipality",
+            "importance": 0.00011644630038880904,
+            "importance_share": 0.00011644630038880904
+          },
+          {
+            "feature": "structure",
+            "importance": 0.00010855228054041554,
+            "importance_share": 0.00010855228054041554
+          },
+          {
+            "feature": "station_distance_band",
+            "importance": 6.928915004016194e-05,
+            "importance_share": 6.928915004016194e-05
+          },
+          {
+            "feature": "road_type",
+            "importance": 6.04151651521438e-05,
+            "importance_share": 6.04151651521438e-05
+          },
+          {
+            "feature": "use_district",
+            "importance": 4.879877259123085e-05,
+            "importance_share": 4.879877259123085e-05
+          },
+          {
+            "feature": "far_bcr_ratio",
+            "importance": 4.4291388950727434e-05,
+            "importance_share": 4.4291388950727434e-05
+          },
+          {
+            "feature": "far",
+            "importance": 3.7968761662127764e-05,
+            "importance_share": 3.7968761662127764e-05
+          },
+          {
+            "feature": "fire_zone",
+            "importance": 7.647233041772711e-06,
+            "importance_share": 7.647233041772711e-06
+          }
+        ]
+      },
+      "gradient_boosting": {
+        "metrics": {
+          "train": {
+            "mae": 62.051242301086596,
+            "rmse": 122.44408256838247,
+            "r2": 0.9998549983870828,
+            "mape": 5.758452012059915,
+            "mdape": 1.1519973818088258,
+            "n": 2560,
+            "fit_seconds": 1.6604354996234179
+          },
+          "val": {
+            "mae": 246.34855992838567,
+            "rmse": 1329.0039558737774,
+            "r2": 0.9842974761139947,
+            "mape": 9.782439083680796,
+            "mdape": 1.8524413132387283,
+            "n": 1280
+          },
+          "test": {
+            "mae": 269.1192898981693,
+            "rmse": 1131.5165779781948,
+            "r2": 0.9912954766587816,
+            "mape": 8.249956681030055,
+            "mdape": 1.9077306096415592,
+            "n": 1280
+          }
+        },
+        "cv": {
+          "cv_mae_mean": 210.63208361920042,
+          "cv_mae_std": 54.871044127897505,
+          "cv_r2_mean": 0.9939373559735646,
+          "cv_r2_std": 0.0035839416756119754
+        },
+        "importance": [
+          {
+            "feature": "lag_unit_price",
+            "importance": 0.9976228240526736,
+            "importance_share": 0.9976228240526736
+          },
+          {
+            "feature": "site_area",
+            "importance": 0.0007116623415354354,
+            "importance_share": 0.0007116623415354354
+          },
+          {
+            "feature": "station_distance",
+            "importance": 0.00040197054979332445,
+            "importance_share": 0.00040197054979332445
+          },
+          {
+            "feature": "nearest_station",
+            "importance": 0.0002727219331762154,
+            "importance_share": 0.0002727219331762154
+          },
+          {
+            "feature": "structure",
+            "importance": 0.00016903369404305845,
+            "importance_share": 0.00016903369404305845
+          },
+          {
+            "feature": "depth_ratio",
+            "importance": 0.00016118413610257475,
+            "importance_share": 0.00016118413610257475
+          },
+          {
+            "feature": "far",
+            "importance": 0.0001232295354354761,
+            "importance_share": 0.0001232295354354761
+          },
+          {
+            "feature": "road_width",
+            "importance": 9.464796783691425e-05,
+            "importance_share": 9.464796783691425e-05
+          },
+          {
+            "feature": "floors_total",
+            "importance": 9.376682189700172e-05,
+            "importance_share": 9.376682189700172e-05
+          },
+          {
+            "feature": "locality",
+            "importance": 8.173782718793289e-05,
+            "importance_share": 8.173782718793289e-05
+          },
+          {
+            "feature": "municipality",
+            "importance": 6.925231603034056e-05,
+            "importance_share": 6.925231603034056e-05
+          },
+          {
+            "feature": "current_use",
+            "importance": 6.654634151709219e-05,
+            "importance_share": 6.654634151709219e-05
+          },
+          {
+            "feature": "site_area_band",
+            "importance": 3.834218825260613e-05,
+            "importance_share": 3.834218825260613e-05
+          },
+          {
+            "feature": "far_bcr_ratio",
+            "importance": 2.2862288320385205e-05,
+            "importance_share": 2.2862288320385205e-05
+          },
+          {
+            "feature": "road_type",
+            "importance": 1.6146640592964986e-05,
+            "importance_share": 1.6146640592964986e-05
+          },
+          {
+            "feature": "use_district",
+            "importance": 1.446999000115037e-05,
+            "importance_share": 1.446999000115037e-05
+          },
+          {
+            "feature": "station_distance_band",
+            "importance": 1.0581551894678564e-05,
+            "importance_share": 1.0581551894678564e-05
+          },
+          {
+            "feature": "road_direction",
+            "importance": 9.230410031677937e-06,
+            "importance_share": 9.230410031677937e-06
+          },
+          {
+            "feature": "road_width_band",
+            "importance": 6.706148841490692e-06,
+            "importance_share": 6.706148841490692e-06
+          },
+          {
+            "feature": "fire_zone",
+            "importance": 5.025993082076565e-06,
+            "importance_share": 5.025993082076565e-06
+          }
+        ]
+      },
+      "lightgbm": {
+        "metrics": {
+          "train": {
+            "mae": 351.0170442739068,
+            "rmse": 2403.8406699876605,
+            "r2": 0.9441132844129797,
+            "mape": 7.383412076381923,
+            "mdape": 1.5821685488097557,
+            "n": 2560,
+            "fit_seconds": 0.16328841727226973
+          },
+          "val": {
+            "mae": 547.8641966459147,
+            "rmse": 3271.449469568061,
+            "r2": 0.9048525072384699,
+            "mape": 10.581113677908117,
+            "mdape": 2.296040889896852,
+            "n": 1280
+          },
+          "test": {
+            "mae": 581.6505559789068,
+            "rmse": 3436.326072914844,
+            "r2": 0.9197191640013526,
+            "mape": 9.668967595152559,
+            "mdape": 2.1796548148253327,
+            "n": 1280
+          }
+        },
+        "cv": {
+          "cv_mae_mean": 534.0345239697729,
+          "cv_mae_std": 161.48076811278756,
+          "cv_r2_mean": 0.8997642238334909,
+          "cv_r2_std": 0.027559483872255264
+        },
+        "importance": [
+          {
+            "feature": "lag_unit_price",
+            "importance": 1154.0,
+            "importance_share": 0.38466666666666666
+          },
+          {
+            "feature": "nearest_station",
+            "importance": 329.0,
+            "importance_share": 0.10966666666666666
+          },
+          {
+            "feature": "site_area",
+            "importance": 278.0,
+            "importance_share": 0.09266666666666666
+          },
+          {
+            "feature": "station_distance",
+            "importance": 233.0,
+            "importance_share": 0.07766666666666666
+          },
+          {
+            "feature": "road_width",
+            "importance": 197.0,
+            "importance_share": 0.06566666666666666
+          },
+          {
+            "feature": "municipality",
+            "importance": 185.0,
+            "importance_share": 0.06166666666666667
+          },
+          {
+            "feature": "far",
+            "importance": 107.0,
+            "importance_share": 0.035666666666666666
+          },
+          {
+            "feature": "floors_total",
+            "importance": 102.0,
+            "importance_share": 0.034
+          },
+          {
+            "feature": "current_use",
+            "importance": 71.0,
+            "importance_share": 0.023666666666666666
+          },
+          {
+            "feature": "road_type",
+            "importance": 58.0,
+            "importance_share": 0.019333333333333334
+          },
+          {
+            "feature": "depth_ratio",
+            "importance": 45.0,
+            "importance_share": 0.015
+          },
+          {
+            "feature": "road_direction",
+            "importance": 34.0,
+            "importance_share": 0.011333333333333334
+          },
+          {
+            "feature": "site_area_band",
+            "importance": 32.0,
+            "importance_share": 0.010666666666666666
+          },
+          {
+            "feature": "station_distance_band",
+            "importance": 31.0,
+            "importance_share": 0.010333333333333333
+          },
+          {
+            "feature": "structure",
+            "importance": 29.0,
+            "importance_share": 0.009666666666666667
+          },
+          {
+            "feature": "use_district",
+            "importance": 28.0,
+            "importance_share": 0.009333333333333334
+          },
+          {
+            "feature": "locality",
+            "importance": 22.0,
+            "importance_share": 0.007333333333333333
+          },
+          {
+            "feature": "road_width_band",
+            "importance": 21.0,
+            "importance_share": 0.007
+          },
+          {
+            "feature": "far_bcr_ratio",
+            "importance": 20.0,
+            "importance_share": 0.006666666666666667
+          },
+          {
+            "feature": "bcr",
+            "importance": 12.0,
+            "importance_share": 0.004
+          }
+        ]
+      }
+    },
+    "best_model": "gradient_boosting",
+    "experiments": {
+      "feature_sets": {
+        "description": "Same lightgbm configuration and identical train/test rows of the prediction year. Only the input columns change, except for the last row which is the project's real temporal forecast.",
+        "split": "random on the prediction year (seeded), except the reference row",
+        "settings": {
+          "attributes_only": {
+            "metrics": {
+              "train": {
+                "mae": 1206.1214014134637,
+                "rmse": 3947.2177795223606,
+                "r2": 0.8614842709767307,
+                "mape": 111.11174614102143,
+                "mdape": 14.137527175315082,
+                "n": 1280,
+                "fit_seconds": 0.1380427498370409
+              },
+              "val": {
+                "mae": 2558.795824381209,
+                "rmse": 7649.8962352179515,
+                "r2": 0.6021363702923579,
+                "mape": 61.44540036861988,
+                "mdape": 26.417993610446352,
+                "n": 1280
+              },
+              "test": {
+                "mae": 2558.795824381209,
+                "rmse": 7649.8962352179515,
+                "r2": 0.6021363702923579,
+                "mape": 61.44540036861988,
+                "mdape": 26.417993610446352,
+                "n": 1280
+              }
+            },
+            "n_features": 23
+          },
+          "attributes_plus_lag": {
+            "metrics": {
+              "train": {
+                "mae": 625.7100846847865,
+                "rmse": 3553.810859811401,
+                "r2": 0.8877191903337568,
+                "mape": 55.81548727351749,
+                "mdape": 2.169006027566664,
+                "n": 1280,
+                "fit_seconds": 0.14125204272568226
+              },
+              "val": {
+                "mae": 986.2798001679035,
+                "rmse": 5364.463370589832,
+                "r2": 0.804351861510795,
+                "mape": 59.54891147272965,
+                "mdape": 3.4239432808516703,
+                "n": 1280
+              },
+              "test": {
+                "mae": 986.2798001679035,
+                "rmse": 5364.463370589832,
+                "r2": 0.804351861510795,
+                "mape": 59.54891147272965,
+                "mdape": 3.4239432808516703,
+                "n": 1280
+              }
+            },
+            "n_features": 24
+          },
+          "attributes_plus_leakage_columns": {
+            "metrics": {
+              "train": {
+                "mae": 608.2815872726111,
+                "rmse": 3509.7775739497497,
+                "r2": 0.8904843702687343,
+                "mape": 40.37505316935563,
+                "mdape": 1.8631494782764788,
+                "n": 1280,
+                "fit_seconds": 0.18812333326786757
+              },
+              "val": {
+                "mae": 919.6550267071398,
+                "rmse": 5170.939638431052,
+                "r2": 0.8182133074619964,
+                "mape": 35.49328678888968,
+                "mdape": 3.2881518075088616,
+                "n": 1280
+              },
+              "test": {
+                "mae": 919.6550267071398,
+                "rmse": 5170.939638431052,
+                "r2": 0.8182133074619964,
+                "mape": 35.49328678888968,
+                "mdape": 3.2881518075088616,
+                "n": 1280
+              }
+            },
+            "n_features": 26
+          },
+          "temporal_forecast_reference": {
+            "metrics": {
+              "train": {
+                "mae": 351.0170442739068,
+                "rmse": 2403.8406699876605,
+                "r2": 0.9441132844129797,
+                "mape": 7.383412076381923,
+                "mdape": 1.5821685488097557,
+                "n": 2560,
+                "fit_seconds": 0.20796195790171623
+              },
+              "val": {
+                "mae": 547.8641966459147,
+                "rmse": 3271.449469568061,
+                "r2": 0.9048525072384699,
+                "mape": 10.581113677908117,
+                "mdape": 2.296040889896852,
+                "n": 1280
+              },
+              "test": {
+                "mae": 581.6505559789068,
+                "rmse": 3436.326072914844,
+                "r2": 0.9197191640013526,
+                "mape": 9.668967595152559,
+                "mdape": 2.1796548148253327,
+                "n": 1280
+              }
+            },
+            "n_features": 24
+          }
+        },
+        "correlation_with_target": {
+          "prev_unit_price": 0.9989606891673252,
+          "change_rate_prior_year": 0.36504344474713885,
+          "lag_unit_price": 0.9989606891673252,
+          "price_current": 0.6935762067132176
+        },
+        "leaky_features": [
+          "prev_unit_price",
+          "change_rate_prior_year"
+        ],
+        "lag_coverage_prediction_year": 0.977734375,
+        "lag_coverage_training_year": 0.99296875
+      },
+      "log_target": {
+        "ridge": {
+          "raw_target": {
+            "val": {
+              "mae": 315.2840306435179,
+              "rmse": 1401.4673131116747,
+              "r2": 0.9825384472025834,
+              "mape": 15.873274073740372,
+              "mdape": 3.4761651007369174,
+              "n": 1280
+            },
+            "test": {
+              "mae": 325.2783280468353,
+              "rmse": 1088.9177916032518,
+              "r2": 0.9919385467616261,
+              "mape": 18.153650335851193,
+              "mdape": 3.5819807456540027,
+              "n": 1280
+            }
+          },
+          "log_target": {
+            "val": {
+              "mae": 1557.6906828847432,
+              "rmse": 7682.655382461992,
+              "r2": 0.4752654978199188,
+              "mape": 21.13413124474722,
+              "mdape": 14.354308499588887,
+              "n": 1280
+            },
+            "test": {
+              "mae": 1972.3857560305428,
+              "rmse": 11351.90608933825,
+              "r2": 0.12388577644008614,
+              "mape": 20.3582282555114,
+              "mdape": 14.032574278975897,
+              "n": 1280
+            }
+          }
+        },
+        "random_forest": {
+          "raw_target": {
+            "val": {
+              "mae": 277.2197657788978,
+              "rmse": 1449.0337295370637,
+              "r2": 0.9813330267575509,
+              "mape": 5.016172688944779,
+              "mdape": 1.6712964965001782,
+              "n": 1280
+            },
+            "test": {
+              "mae": 297.4743092972747,
+              "rmse": 1304.0192470870059,
+              "r2": 0.9884391130386341,
+              "mape": 5.382800412844247,
+              "mdape": 1.6629880967813264,
+              "n": 1280
+            }
+          },
+          "log_target": {
+            "val": {
+              "mae": 275.46410624059257,
+              "rmse": 1484.4780637608342,
+              "r2": 0.9804086445512921,
+              "mape": 4.29193100018252,
+              "mdape": 1.659845631454425,
+              "n": 1280
+            },
+            "test": {
+              "mae": 302.29280923568535,
+              "rmse": 1351.032451790171,
+              "r2": 0.9875904877095933,
+              "mape": 4.771243165764365,
+              "mdape": 1.6529151554993775,
+              "n": 1280
+            }
+          }
+        },
+        "gradient_boosting": {
+          "raw_target": {
+            "val": {
+              "mae": 246.34855992838567,
+              "rmse": 1329.0039558737774,
+              "r2": 0.9842974761139947,
+              "mape": 9.782439083680796,
+              "mdape": 1.8524413132387283,
+              "n": 1280
+            },
+            "test": {
+              "mae": 269.1192898981693,
+              "rmse": 1131.5165779781948,
+              "r2": 0.9912954766587816,
+              "mape": 8.249956681030055,
+              "mdape": 1.9077306096415592,
+              "n": 1280
+            }
+          },
+          "log_target": {
+            "val": {
+              "mae": 249.27417158756953,
+              "rmse": 1407.1121354835027,
+              "r2": 0.9823975008280259,
+              "mape": 3.7744581916485247,
+              "mdape": 1.4427832062612254,
+              "n": 1280
+            },
+            "test": {
+              "mae": 257.7612880638454,
+              "rmse": 1115.39932469726,
+              "r2": 0.9915416840013185,
+              "mape": 4.7137062416745605,
+              "mdape": 1.4720296654594955,
+              "n": 1280
+            }
+          }
+        },
+        "lightgbm": {
+          "raw_target": {
+            "val": {
+              "mae": 547.8641966459147,
+              "rmse": 3271.449469568061,
+              "r2": 0.9048525072384699,
+              "mape": 10.581113677908117,
+              "mdape": 2.296040889896852,
+              "n": 1280
+            },
+            "test": {
+              "mae": 581.6505559789068,
+              "rmse": 3436.326072914844,
+              "r2": 0.9197191640013526,
+              "mape": 9.668967595152559,
+              "mdape": 2.1796548148253327,
+              "n": 1280
+            }
+          },
+          "log_target": {
+            "val": {
+              "mae": 476.99187119649713,
+              "rmse": 3107.3368768549744,
+              "r2": 0.9141592321679243,
+              "mape": 5.364009649772155,
+              "mdape": 1.888820077982717,
+              "n": 1280
+            },
+            "test": {
+              "mae": 536.3472537565474,
+              "rmse": 3314.603569963048,
+              "r2": 0.9253058930329612,
+              "mape": 6.010529524843843,
+              "mdape": 1.864572112596481,
+              "n": 1280
+            }
+          }
+        }
+      },
+      "ratio_model": {
+        "description": "lightgbm fitted on log(unit_price / lag_unit_price) with the same attributes, then reconstructed as lag * exp(prediction).",
+        "train_median_log_ratio": 0.06154509234403906,
+        "train_median_ratio": 1.063478450183774,
+        "prediction_year_ratio_median": 1.0714285714285714,
+        "prediction_year_ratio_std": 0.05360135729601779,
+        "prediction_year_share_rising": 0.9768278066320415,
+        "prediction_year_n": 2503,
+        "splits": {
+          "val": {
+            "mae": 211.11156315725034,
+            "rmse": 1412.4252021224095,
+            "r2": 0.9822643205158482,
+            "mape": 4.012183185029277,
+            "mdape": 0.977536770429906,
+            "n": 1280
+          },
+          "test": {
+            "mae": 208.22403784125964,
+            "rmse": 1041.2225123813007,
+            "r2": 0.9926292742775729,
+            "mape": 4.0646489117534195,
+            "mdape": 1.0337488996171207,
+            "n": 1280
+          }
+        }
+      },
+      "cross_series_check": {
+        "description": "Generalisation check on the secondary series (基準地価). Trained on 令和7年 with a genuine measured lag from 令和6年, then scored on 令和6年 itself, split in half. 令和6年 rows have no earlier file to draw a lag from, so every model is fitted on attributes only (the lag baseline is undefined there). The series selects different sites, so these numbers are not comparable with the 公示地価 table.",
+        "n_train": 1280,
+        "n_val": 638,
+        "n_test": 639,
+        "n_train_with_lag": 1268,
+        "models": {
+          "median": {
+            "val": {
+              "mae": 4631.153099926671,
+              "rmse": 10196.343907630458,
+              "r2": -0.07648014262774683,
+              "mape": 1134.3494387362998,
+              "mdape": 66.65527979604602,
+              "n": 638
+            },
+            "test": {
+              "mae": 4397.712366905249,
+              "rmse": 11135.512678487346,
+              "r2": -0.05428949268478789,
+              "mape": 981.5986448793165,
+              "mdape": 61.05337685886949,
+              "n": 639
+            }
+          },
+          "ridge": {
+            "val": {
+              "mae": 1860.3430228151262,
+              "rmse": 5196.610580901686,
+              "r2": 0.7203869613250916,
+              "mape": 25.859412041604415,
+              "mdape": 17.968679696659997,
+              "n": 638
+            },
+            "test": {
+              "mae": 1880.547314873874,
+              "rmse": 6906.458938511917,
+              "r2": 0.5944444836635578,
+              "mape": 25.79491496253683,
+              "mdape": 17.517152230340823,
+              "n": 639
+            }
+          },
+          "lightgbm": {
+            "val": {
+              "mae": 1430.3208285333324,
+              "rmse": 3659.3358690349737,
+              "r2": 0.8613494431909836,
+              "mape": 64.80306793821063,
+              "mdape": 19.1481561758612,
+              "n": 638
+            },
+            "test": {
+              "mae": 1364.5639196904235,
+              "rmse": 3495.6094329289563,
+              "r2": 0.8961072480818884,
+              "mape": 61.73574047684602,
+              "mdape": 18.368627281044162,
+              "n": 639
+            }
+          },
+          "random_forest": {
+            "val": {
+              "mae": 1438.0347453322076,
+              "rmse": 3739.2727493767993,
+              "r2": 0.8552257373323399,
+              "mape": 32.90743598458396,
+              "mdape": 14.372555585515585,
+              "n": 638
+            },
+            "test": {
+              "mae": 1355.012043398257,
+              "rmse": 3819.1942716045182,
+              "r2": 0.8759825077300858,
+              "mape": 33.82581380658689,
+              "mdape": 15.085013598902442,
+              "n": 639
+            }
+          }
+        }
+      }
+    },
+    "error_analysis": {
+      "model": "gradient_boosting",
+      "n_test": 1280,
+      "overall": {
+        "mae": 269.1192898981693,
+        "rmse": 1131.5165779781948,
+        "r2": 0.9912954766587816,
+        "mape": 8.249956681030055,
+        "mdape": 1.9077306096415592,
+        "n": 1280
+      },
+      "concentration_by_municipality": {
+        "total_abs_error": 344472.69106965675,
+        "top_groups": "港区, 中央区, 渋谷区",
+        "top_share": 0.3971361625989944,
+        "n_groups": 56
+      },
+      "concentration_by_use_district": {
+        "total_abs_error": 344472.69106965675,
+        "top_groups": "商業系, 住居系(中高層), 住居系(低層)",
+        "top_share": 0.9663612363998486,
+        "n_groups": 5
+      },
+      "by_municipality": [
+        {
+          "municipality": "港区",
+          "n": 36,
+          "mae": 1668.5594856591201,
+          "rmse": 4335.696820435025,
+          "bias": -1610.6243597207865,
+          "median_abs_pct_error": 4.238871052244695,
+          "mean_abs_pct_error": 7.779874437728277
+        },
+        {
+          "municipality": "中央区",
+          "n": 34,
+          "mae": 1228.6199211579524,
+          "rmse": 3297.8988563179387,
+          "bias": -796.7118945066142,
+          "median_abs_pct_error": 2.007207908439618,
+          "mean_abs_pct_error": 5.511206491989072
+        },
+        {
+          "municipality": "渋谷区",
+          "n": 31,
+          "mae": 1127.7852854339894,
+          "rmse": 2466.215809524722,
+          "bias": -803.6497834015454,
+          "median_abs_pct_error": 2.426455105671194,
+          "mean_abs_pct_error": 3.754658242876938
+        },
+        {
+          "municipality": "台東区",
+          "n": 26,
+          "mae": 862.2981515515753,
+          "rmse": 1564.1510005558298,
+          "bias": -442.6712971538303,
+          "median_abs_pct_error": 3.875551920584651,
+          "mean_abs_pct_error": 4.573965934995288
+        },
+        {
+          "municipality": "目黒区",
+          "n": 25,
+          "mae": 596.7632728207359,
+          "rmse": 2062.1866680851267,
+          "bias": -553.7302224337541,
+          "median_abs_pct_error": 2.583307906636641,
+          "mean_abs_pct_error": 5.171685652099432
+        },
+        {
+          "municipality": "千代田区",
+          "n": 31,
+          "mae": 444.91586784885635,
+          "rmse": 662.6008059389154,
+          "bias": -295.129518330551,
+          "median_abs_pct_error": 2.4240265150775406,
+          "mean_abs_pct_error": 2.904379190620371
+        },
+        {
+          "municipality": "新宿区",
+          "n": 36,
+          "mae": 443.4058105694103,
+          "rmse": 1243.1673210680447,
+          "bias": -332.1973646858513,
+          "median_abs_pct_error": 1.7110610804108894,
+          "mean_abs_pct_error": 3.5252786350009035
+        },
+        {
+          "municipality": "中野区",
+          "n": 23,
+          "mae": 323.18175578420136,
+          "rmse": 852.6468936958903,
+          "bias": -261.7928291961717,
+          "median_abs_pct_error": 1.2399819032614041,
+          "mean_abs_pct_error": 2.122473520452961
+        },
+        {
+          "municipality": "文京区",
+          "n": 27,
+          "mae": 305.4674688320404,
+          "rmse": 377.9944521698368,
+          "bias": -301.84768273559905,
+          "median_abs_pct_error": 2.8263021992126585,
+          "mean_abs_pct_error": 3.5574969172518203
+        },
+        {
+          "municipality": "品川区",
+          "n": 31,
+          "mae": 295.48163193977865,
+          "rmse": 411.9814937219857,
+          "bias": -265.3937308582071,
+          "median_abs_pct_error": 3.5926634958858417,
+          "mean_abs_pct_error": 11.645687657535067
+        },
+        {
+          "municipality": "荒川区",
+          "n": 12,
+          "mae": 291.21034567636497,
+          "rmse": 528.8897127006343,
+          "bias": -291.21034567636497,
+          "median_abs_pct_error": 2.314868780670987,
+          "mean_abs_pct_error": 4.911261275123009
+        },
+        {
+          "municipality": "北区",
+          "n": 28,
+          "mae": 280.0900014008662,
+          "rmse": 552.4801614244874,
+          "bias": -278.899273990687,
+          "median_abs_pct_error": 2.23546795282111,
+          "mean_abs_pct_error": 3.9394538137975244
+        },
+        {
+          "municipality": "昭島市",
+          "n": 8,
+          "mae": 269.04835324425926,
+          "rmse": 637.4972255858121,
+          "bias": 219.79877724612535,
+          "median_abs_pct_error": 3.3628580896697855,
+          "mean_abs_pct_error": 18.122360630552528
+        },
+        {
+          "municipality": "江東区",
+          "n": 26,
+          "mae": 256.02019488900737,
+          "rmse": 497.5060283307236,
+          "bias": -239.47017654163074,
+          "median_abs_pct_error": 3.0570860091913925,
+          "mean_abs_pct_error": 8.57347432506293
+        },
+        {
+          "municipality": "板橋区",
+          "n": 29,
+          "mae": 232.705398710942,
+          "rmse": 767.654195555059,
+          "bias": 107.65703775071901,
+          "median_abs_pct_error": 1.791500290299273,
+          "mean_abs_pct_error": 15.431053937400277
+        }
+      ],
+      "by_use_district": [
+        {
+          "use_district_group": "商業系",
+          "n": 397,
+          "mae": 617.5587425490033,
+          "rmse": 1925.249368403929,
+          "bias": -457.7812589653536,
+          "median_abs_pct_error": 2.60623742566888,
+          "mean_abs_pct_error": 3.849445779337253
+        },
+        {
+          "use_district_group": "住居系(中高層)",
+          "n": 317,
+          "mae": 170.1646438718865,
+          "rmse": 628.0609734649393,
+          "bias": -3.5425668621472273,
+          "median_abs_pct_error": 1.6567431405236723,
+          "mean_abs_pct_error": 6.661512006405069
+        },
+        {
+          "use_district_group": "工業系",
+          "n": 114,
+          "mae": 99.37276167182975,
+          "rmse": 251.72434917378857,
+          "bias": -53.93736976099904,
+          "median_abs_pct_error": 3.238442704202222,
+          "mean_abs_pct_error": 10.845827362343222
+        },
+        {
+          "use_district_group": "住居系(低層)",
+          "n": 438,
+          "mae": 77.10512043085447,
+          "rmse": 282.79256517755283,
+          "bias": 13.874475716729007,
+          "median_abs_pct_error": 1.4344290531758654,
+          "mean_abs_pct_error": 6.982546365488164
+        },
+        {
+          "use_district_group": "その他/不明",
+          "n": 14,
+          "mae": 18.510042215112605,
+          "rmse": 29.994182365742198,
+          "bias": 9.029956112545687,
+          "median_abs_pct_error": 63.45680066638492,
+          "mean_abs_pct_error": 187.51683170715938
+        }
+      ],
+      "by_price_band": [
+        {
+          "price_band": ">100k",
+          "n": 5,
+          "mae": 7140.844963191153,
+          "rmse": 8867.778902857042,
+          "bias": -7140.844963191153,
+          "median_abs_pct_error": 4.595976889957316,
+          "mean_abs_pct_error": 5.0987536735161845
+        },
+        {
+          "price_band": "30k-100k",
+          "n": 33,
+          "mae": 2901.68717761828,
+          "rmse": 5178.925848494448,
+          "bias": -2202.7211916733863,
+          "median_abs_pct_error": 3.364978684916834,
+          "mean_abs_pct_error": 6.321330295450144
+        },
+        {
+          "price_band": "10k-30k",
+          "n": 158,
+          "mae": 585.9440596171563,
+          "rmse": 1217.7929506656299,
+          "bias": -399.6235908664132,
+          "median_abs_pct_error": 2.7578443419058343,
+          "mean_abs_pct_error": 3.8841108353699743
+        },
+        {
+          "price_band": "5k-10k",
+          "n": 249,
+          "mae": 201.55808357005924,
+          "rmse": 402.84043148464156,
+          "bias": -124.80544596234081,
+          "median_abs_pct_error": 1.8875610676263244,
+          "mean_abs_pct_error": 2.8367405165197277
+        },
+        {
+          "price_band": "<1k",
+          "n": 188,
+          "mae": 89.41972067894993,
+          "rmse": 449.2710895526698,
+          "bias": 60.325418565887524,
+          "median_abs_pct_error": 3.427444935328297,
+          "mean_abs_pct_error": 35.59838194726389
+        },
+        {
+          "price_band": "1k-5k",
+          "n": 647,
+          "mae": 82.58849718114331,
+          "rmse": 271.98077363447965,
+          "bias": 13.0793739482377,
+          "median_abs_pct_error": 1.4754569599209597,
+          "mean_abs_pct_error": 3.5754454048122954
+        }
+      ],
+      "by_site_area_band": [
+        {
+          "site_area_band": "300-500",
+          "n": 90,
+          "mae": 529.6587717683852,
+          "rmse": 2034.4247619165008,
+          "bias": -352.9083479991425,
+          "median_abs_pct_error": 3.1313316377505007,
+          "mean_abs_pct_error": 8.193550303345853
+        },
+        {
+          "site_area_band": "<=100",
+          "n": 166,
+          "mae": 508.0527331387147,
+          "rmse": 2237.463332350079,
+          "bias": -378.80974172399243,
+          "median_abs_pct_error": 1.719061598617154,
+          "mean_abs_pct_error": 3.413575269174354
+        },
+        {
+          "site_area_band": "500-1k",
+          "n": 53,
+          "mae": 386.0409035309341,
+          "rmse": 977.1677191742621,
+          "bias": -142.93777255855508,
+          "median_abs_pct_error": 4.276132660377593,
+          "mean_abs_pct_error": 30.46309931671957
+        },
+        {
+          "site_area_band": "100-150",
+          "n": 427,
+          "mae": 228.0172600220733,
+          "rmse": 727.1935209599989,
+          "bias": -113.61812937553277,
+          "median_abs_pct_error": 1.5861843973312997,
+          "mean_abs_pct_error": 2.8650829905317075
+        },
+        {
+          "site_area_band": "150-200",
+          "n": 284,
+          "mae": 198.44930976667942,
+          "rmse": 619.1342127441856,
+          "bias": -54.390503653248444,
+          "median_abs_pct_error": 1.840038901028465,
+          "mean_abs_pct_error": 8.025073863096138
+        },
+        {
+          "site_area_band": "200-300",
+          "n": 190,
+          "mae": 162.85294266777993,
+          "rmse": 498.0918396866992,
+          "bias": -78.48162475203694,
+          "median_abs_pct_error": 1.8280915249248109,
+          "mean_abs_pct_error": 7.037586207413693
+        },
+        {
+          "site_area_band": "1k-5k",
+          "n": 58,
+          "mae": 122.38274976742466,
+          "rmse": 222.2278950256501,
+          "bias": -27.447606867868867,
+          "median_abs_pct_error": 6.618424427649394,
+          "mean_abs_pct_error": 12.365423847002427
+        },
+        {
+          "site_area_band": ">5k",
+          "n": 12,
+          "mae": 20.270618815409154,
+          "rmse": 28.09708164570692,
+          "bias": -10.199111165797243,
+          "median_abs_pct_error": 73.0649316970005,
+          "mean_abs_pct_error": 173.70665744476494
+        }
+      ],
+      "by_station_distance_band": [
+        {
+          "station_distance_band": "100-250m",
+          "n": 163,
+          "mae": 859.9737112054324,
+          "rmse": 2551.714225574378,
+          "bias": -576.5969511386805,
+          "median_abs_pct_error": 2.57581148792625,
+          "mean_abs_pct_error": 5.911045381827078
+        },
+        {
+          "station_distance_band": "<=100m",
+          "n": 87,
+          "mae": 808.6190998699966,
+          "rmse": 2235.2238371110943,
+          "bias": -628.770921722674,
+          "median_abs_pct_error": 2.1612656547191276,
+          "mean_abs_pct_error": 3.481747213134023
+        },
+        {
+          "station_distance_band": "250-500m",
+          "n": 300,
+          "mae": 221.15128387917693,
+          "rmse": 532.6759972723976,
+          "bias": -92.51315270063725,
+          "median_abs_pct_error": 1.7676777704504676,
+          "mean_abs_pct_error": 10.655542639097106
+        },
+        {
+          "station_distance_band": "500m-1km",
+          "n": 380,
+          "mae": 117.62125569318941,
+          "rmse": 296.55199240486957,
+          "bias": -31.182252430339883,
+          "median_abs_pct_error": 1.7586601922299272,
+          "mean_abs_pct_error": 4.268945469569449
+        },
+        {
+          "station_distance_band": "2-5km",
+          "n": 75,
+          "mae": 93.17485811134091,
+          "rmse": 414.79296699427937,
+          "bias": 71.40928209515998,
+          "median_abs_pct_error": 2.2980147614201125,
+          "mean_abs_pct_error": 31.831010806134497
+        },
+        {
+          "station_distance_band": "1-2km",
+          "n": 266,
+          "mae": 59.1556947716604,
+          "rmse": 206.6634177166914,
+          "bias": 1.0107711856025272,
+          "median_abs_pct_error": 1.7570390360351293,
+          "mean_abs_pct_error": 7.351654140477172
+        },
+        {
+          "station_distance_band": ">5km",
+          "n": 9,
+          "mae": 20.235884411589513,
+          "rmse": 35.249164919118265,
+          "bias": -15.617804567376457,
+          "median_abs_pct_error": 3.070523955481614,
+          "mean_abs_pct_error": 14.644918327273293
+        }
+      ],
+      "by_far_band": [
+        {
+          "far_band": ">600",
+          "n": 65,
+          "mae": 1611.8748589414522,
+          "rmse": 3148.021157795562,
+          "bias": -1161.9869579810552,
+          "median_abs_pct_error": 3.261957686316835,
+          "mean_abs_pct_error": 3.724277534070737
+        },
+        {
+          "far_band": "400-600",
+          "n": 156,
+          "mae": 611.0713003661474,
+          "rmse": 2096.077096140846,
+          "bias": -494.120240399716,
+          "median_abs_pct_error": 2.9234090471178034,
+          "mean_abs_pct_error": 3.73350592002839
+        },
+        {
+          "far_band": "300-400",
+          "n": 102,
+          "mae": 263.97530022528855,
+          "rmse": 596.714609135177,
+          "bias": -107.30345221724272,
+          "median_abs_pct_error": 2.651949128639722,
+          "mean_abs_pct_error": 6.287746349187992
+        },
+        {
+          "far_band": "200-300",
+          "n": 210,
+          "mae": 254.95501554200726,
+          "rmse": 967.926817325969,
+          "bias": -183.52269185626452,
+          "median_abs_pct_error": 2.0354718213285707,
+          "mean_abs_pct_error": 5.304652676918351
+        },
+        {
+          "far_band": "100-200",
+          "n": 347,
+          "mae": 107.23391781990765,
+          "rmse": 365.96203349747503,
+          "bias": 36.887483631561715,
+          "median_abs_pct_error": 1.695852638895417,
+          "mean_abs_pct_error": 10.21437383660905
+        },
+        {
+          "far_band": "<=100",
+          "n": 400,
+          "mae": 66.74374752758621,
+          "rmse": 272.6729821598846,
+          "bias": 16.222741147874196,
+          "median_abs_pct_error": 1.4412492786274593,
+          "mean_abs_pct_error": 11.089311693515187
+        }
+      ],
+      "top_errors": [
+        {
+          "municipality": "港区",
+          "locality": "港",
+          "lot_number": "浜松町２丁目１０７番８",
+          "use_district": "商業",
+          "site_area": 89,
+          "far": 600,
+          "bcr": 80,
+          "station_distance": 240,
+          "nearest_station": "浜松町",
+          "road_width": 8.0,
+          "current_use": "事務所",
+          "y_true": 30898.876404494382,
+          "y_pred": 6836.477521262897,
+          "residual": -24062.398883231486,
+          "abs_error": 24062.398883231486,
+          "pct_error": -77.87467274936736
+        },
+        {
+          "municipality": "中央区",
+          "locality": "中央",
+          "lot_number": "銀座４丁目２番４",
+          "use_district": "商業",
+          "site_area": 454,
+          "far": 800,
+          "bcr": 80,
+          "station_distance": 0,
+          "nearest_station": "銀座",
+          "road_width": 27.0,
+          "current_use": "店舗",
+          "y_true": 147797.35682819382,
+          "y_pred": 133186.2154015518,
+          "residual": -14611.141426642018,
+          "abs_error": 14611.141426642018,
+          "pct_error": -9.885928774508908
+        },
+        {
+          "municipality": "中央区",
+          "locality": "中央",
+          "lot_number": "銀座２丁目２番１９外",
+          "use_district": "商業",
+          "site_area": 353,
+          "far": 800,
+          "bcr": 80,
+          "station_distance": 0,
+          "nearest_station": "銀座一丁目",
+          "road_width": 27.0,
+          "current_use": "店舗兼事務所",
+          "y_true": 140509.91501416432,
+          "y_pred": 129122.22409856759,
+          "residual": -11387.69091559673,
+          "abs_error": 11387.69091559673,
+          "pct_error": -8.104546155656543
+        },
+        {
+          "municipality": "渋谷区",
+          "locality": "渋谷",
+          "lot_number": "道玄坂１丁目１６番１８",
+          "use_district": "商業",
+          "site_area": 78,
+          "far": 800,
+          "bcr": 80,
+          "station_distance": 230,
+          "nearest_station": "渋谷",
+          "road_width": 10.0,
+          "current_use": "店舗",
+          "y_true": 99358.97435897436,
+          "y_pred": 88839.81066303312,
+          "residual": -10519.163695941243,
+          "abs_error": 10519.163695941243,
+          "pct_error": -10.587029268173122
+        },
+        {
+          "municipality": "目黒区",
+          "locality": "目黒",
+          "lot_number": "目黒本町５丁目２２番３外",
+          "use_district": "近商",
+          "site_area": 86,
+          "far": 300,
+          "bcr": 80,
+          "station_distance": 230,
+          "nearest_station": "武蔵小山",
+          "road_width": 20.0,
+          "current_use": "店舗兼共同住宅",
+          "y_true": 15813.953488372093,
+          "y_pred": 5565.137931565284,
+          "residual": -10248.81555680681,
+          "abs_error": 10248.81555680681,
+          "pct_error": -64.80868660921954
+        },
+        {
+          "municipality": "新宿区",
+          "locality": "新宿",
+          "lot_number": "愛住町７番１２",
+          "use_district": "２中専",
+          "site_area": 102,
+          "far": 300,
+          "bcr": 60,
+          "station_distance": 190,
+          "nearest_station": "四谷三丁目",
+          "road_width": 3.9,
+          "current_use": "共同住宅",
+          "y_true": 11568.627450980392,
+          "y_pred": 4468.487884694629,
+          "residual": -7100.139566285762,
+          "abs_error": 7100.139566285762,
+          "pct_error": -61.374087776368455
+        },
+        {
+          "municipality": "渋谷区",
+          "locality": "渋谷",
+          "lot_number": "神宮前１丁目１３番５",
+          "use_district": "商業",
+          "site_area": 172,
+          "far": 500,
+          "bcr": 80,
+          "station_distance": 190,
+          "nearest_station": "原宿",
+          "road_width": 36.0,
+          "current_use": "店舗、事務所兼住宅",
+          "y_true": 135465.11627906977,
+          "y_pred": 129239.17084092992,
+          "residual": -6225.945438139854,
+          "abs_error": 6225.945438139854,
+          "pct_error": -4.595976889957316
+        },
+        {
+          "municipality": "台東区",
+          "locality": "台東",
+          "lot_number": "上野４丁目２１番３",
+          "use_district": "商業",
+          "site_area": 109,
+          "far": 800,
+          "bcr": 80,
+          "station_distance": 210,
+          "nearest_station": "御徒町",
+          "road_width": 11.0,
+          "current_use": "店舗",
+          "y_true": 73761.46788990825,
+          "y_pred": 79216.61699707893,
+          "residual": 5455.149107170684,
+          "abs_error": 5455.149107170684,
+          "pct_error": 7.3956623467861276
+        },
+        {
+          "municipality": "港区",
+          "locality": "港",
+          "lot_number": "南青山５丁目３９６番",
+          "use_district": "２中専",
+          "site_area": 618,
+          "far": 300,
+          "bcr": 60,
+          "station_distance": 230,
+          "nearest_station": "表参道",
+          "road_width": 4.1,
+          "current_use": "店舗",
+          "y_true": 11326.860841423948,
+          "y_pred": 6012.7738376144725,
+          "residual": -5314.087003809475,
+          "abs_error": 5314.087003809475,
+          "pct_error": -46.91579669077509
+        },
+        {
+          "municipality": "台東区",
+          "locality": "台東",
+          "lot_number": "浅草１丁目１６番１４外",
+          "use_district": "商業",
+          "site_area": 266,
+          "far": 700,
+          "bcr": 80,
+          "station_distance": 0,
+          "nearest_station": "浅草",
+          "road_width": 27.0,
+          "current_use": "店舗",
+          "y_true": 34398.496240601504,
+          "y_pred": 29520.31320504061,
+          "residual": -4878.1830355608945,
+          "abs_error": 4878.1830355608945,
+          "pct_error": -14.181384562395605
+        },
+        {
+          "municipality": "港区",
+          "locality": "港",
+          "lot_number": "新橋２丁目２６番２外",
+          "use_district": "商業",
+          "site_area": 113,
+          "far": 700,
+          "bcr": 80,
+          "station_distance": 90,
+          "nearest_station": "新橋",
+          "road_width": 18.0,
+          "current_use": "店舗兼事務所",
+          "y_true": 89380.53097345133,
+          "y_pred": 84797.62143509532,
+          "residual": -4582.909538356005,
+          "abs_error": 4582.909538356005,
+          "pct_error": -5.127413641923055
+        },
+        {
+          "municipality": "渋谷区",
+          "locality": "渋谷",
+          "lot_number": "恵比寿西１丁目１０番１６",
+          "use_district": "商業",
+          "site_area": 134,
+          "far": 700,
+          "bcr": 80,
+          "station_distance": 200,
+          "nearest_station": "恵比寿",
+          "road_width": 30.0,
+          "current_use": "店舗、事務所兼診療所等",
+          "y_true": 61791.0447761194,
+          "y_pred": 57212.1134113841,
+          "residual": -4578.931364735297,
+          "abs_error": 4578.931364735297,
+          "pct_error": -7.410347860803501
+        },
+        {
+          "municipality": "港区",
+          "locality": "港",
+          "lot_number": "新橋１丁目３０番９",
+          "use_district": "商業",
+          "site_area": 126,
+          "far": 800,
+          "bcr": 80,
+          "station_distance": 260,
+          "nearest_station": "新橋",
+          "road_width": 11.0,
+          "current_use": "事務所",
+          "y_true": 65714.28571428571,
+          "y_pred": 61188.96424104822,
+          "residual": -4525.321473237491,
+          "abs_error": 4525.321473237491,
+          "pct_error": -6.886358763622269
+        },
+        {
+          "municipality": "板橋区",
+          "locality": "板橋",
+          "lot_number": "高島平７丁目２９番９",
+          "use_district": "１中専",
+          "site_area": 375,
+          "far": 200,
+          "bcr": 60,
+          "station_distance": 480,
+          "nearest_station": "新高島平",
+          "road_width": 6.0,
+          "current_use": "共同住宅",
+          "y_true": 1061.3333333333333,
+          "y_pred": 5133.81122212843,
+          "residual": 4072.477888795097,
+          "abs_error": 4072.477888795097,
+          "pct_error": 383.71336891913603
+        },
+        {
+          "municipality": "中野区",
+          "locality": "中野",
+          "lot_number": "中野５丁目２１番７",
+          "use_district": "商業",
+          "site_area": 129,
+          "far": 600,
+          "bcr": 80,
+          "station_distance": 250,
+          "nearest_station": "中野",
+          "road_width": 20.0,
+          "current_use": "店舗、事務所兼住宅",
+          "y_true": 41937.98449612403,
+          "y_pred": 38038.3904185332,
+          "residual": -3899.594077590831,
+          "abs_error": 3899.594077590831,
+          "pct_error": -9.298477560244311
+        },
+        {
+          "municipality": "大田区",
+          "locality": "大田",
+          "lot_number": "南蒲田３丁目１４６１番６",
+          "use_district": "近商",
+          "site_area": 107,
+          "far": 400,
+          "bcr": 80,
+          "station_distance": 150,
+          "nearest_station": "糀谷",
+          "road_width": 30.0,
+          "current_use": "事務所、工場兼住宅",
+          "y_true": 9532.710280373833,
+          "y_pred": 5666.753617957872,
+          "residual": -3865.9566624159606,
+          "abs_error": 3865.9566624159606,
+          "pct_error": -40.55464341946154
+        },
+        {
+          "municipality": "世田谷区",
+          "locality": "世田谷",
+          "lot_number": "等々力８丁目７３番４",
+          "use_district": "１中専",
+          "site_area": 997,
+          "far": 200,
+          "bcr": 60,
+          "station_distance": 840,
+          "nearest_station": "等々力",
+          "road_width": 10.0,
+          "current_use": "共同住宅",
+          "y_true": 892.6780341023069,
+          "y_pred": 4686.299016625461,
+          "residual": 3793.6209825231545,
+          "abs_error": 3793.6209825231545,
+          "pct_error": 424.9707999523129
+        },
+        {
+          "municipality": "渋谷区",
+          "locality": "渋谷",
+          "lot_number": "宇田川町８６番７",
+          "use_district": "商業",
+          "site_area": 165,
+          "far": 700,
+          "bcr": 80,
+          "station_distance": 240,
+          "nearest_station": "渋谷",
+          "road_width": 10.0,
+          "current_use": "店舗兼事務所",
+          "y_true": 120000.0,
+          "y_pred": 116646.7581625299,
+          "residual": -3353.2418374700937,
+          "abs_error": 3353.2418374700937,
+          "pct_error": -2.7943681978917447
+        },
+        {
+          "municipality": "中央区",
+          "locality": "中央",
+          "lot_number": "銀座７丁目５番２",
+          "use_district": "商業",
+          "site_area": 160,
+          "far": 700,
+          "bcr": 80,
+          "station_distance": 400,
+          "nearest_station": "銀座",
+          "road_width": 13.0,
+          "current_use": "事務所兼店舗",
+          "y_true": 58687.5,
+          "y_pred": 55707.87887430328,
+          "residual": -2979.6211256967217,
+          "abs_error": 2979.6211256967217,
+          "pct_error": -5.077096699802721
+        },
+        {
+          "municipality": "町田市",
+          "locality": "町田",
+          "lot_number": "金井１丁目８４２番６",
+          "use_district": "１低専",
+          "site_area": 224,
+          "far": 80,
+          "bcr": 40,
+          "station_distance": 2200,
+          "nearest_station": "玉川学園前",
+          "road_width": 6.0,
+          "current_use": "住宅",
+          "y_true": 540.1785714285714,
+          "y_pred": 3498.4862108002553,
+          "residual": 2958.3076393716838,
+          "abs_error": 2958.3076393716838,
+          "pct_error": 547.6536456357497
+        }
+      ],
+      "hypotheses": {
+        "far_premium": {
+          "spearman_far_vs_price_all": 0.6079659174205116,
+          "spearman_far_vs_price_commercial": 0.5628101927490349,
+          "n_high_far": 221,
+          "mean_bias_high_far": -690.5516279236392,
+          "mae_high_far": 905.4252881824134,
+          "mae_all": 269.1192898981693
+        },
+        "small_site": {
+          "n_small": 44,
+          "mae_small": 503.4949324342228,
+          "mae_rest": 260.77582042277584,
+          "mean_bias_small": -334.4740902316094,
+          "price_ratio_small_vs_rest": 3.0601523525018672
+        },
+        "station_distance": {
+          "pooled_spearman_distance_vs_residual": 0.21307999266273916,
+          "pooled_spearman_distance_vs_price": -0.6030939892564575,
+          "median_distance_commercial": 230.0,
+          "median_distance_other": 820.0,
+          "median_price_commercial": 8449.197860962568,
+          "median_price_other": 2487.3417721518986,
+          "n_cities_checked": 25,
+          "mean_within_city_spearman_distance_vs_residual": 0.08948547416991381,
+          "median_within_city_spearman_distance_vs_residual": 0.110863813945017
+        }
+      },
+      "baseline_comparison": {
+        "lag_baseline_mae": 683.893582947553,
+        "lag_available_in_test": 1251
+      },
+      "predictions_file": "test_predictions.csv"
+    },
+    "figures": {
+      "target_distribution": "01_target_distribution.png",
+      "price_by_municipality": "02_price_by_municipality.png",
+      "pred_vs_actual": "03_pred_vs_actual.png",
+      "residuals": "04_residuals.png",
+      "feature_importance": "05_feature_importance.png",
+      "model_comparison": "06_model_comparison.png",
+      "error_by_municipality": "07_error_by_municipality.png",
+      "leakage_effect": "08_leakage_effect.png"
+    },
+    "environment": {
+      "python": "3.13.12",
+      "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+      "pandas": "3.0.6",
+      "numpy": "2.5.3",
+      "scikit_learn": "1.9.1",
+      "lightgbm": "4.7.0",
+      "primary_model_for_experiments": "lightgbm"
+    }
+  }
+}
